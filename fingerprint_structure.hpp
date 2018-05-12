@@ -48,8 +48,10 @@ float get_fingerprint_average_frequency(struct fingerprint fp);
 
 void save_to_file(int size, struct fingerprint fps[], std::string filename);
 
-int read_from_file(struct fingerprint fps[], std::string filename);
+int read_from_file(std::vector<struct fingerprint> &fps, std::string filename);
 
 int get_last_id_from_file(std::string filename);
+
+int get_new_fingerprint_id(int last_id);
 
 #endif

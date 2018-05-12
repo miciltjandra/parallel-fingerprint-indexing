@@ -140,7 +140,7 @@ void save_to_file(int size, struct fingerprint fps[], std::string filename) {
     fclose(f);
 }
 
-int read_from_file(struct fingerprint fps[], std::string filename) {
+int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -154,8 +154,10 @@ int read_from_file(struct fingerprint fps[], std::string filename) {
 
     int count = 0;
     
-    while(fread(&fps[count], sizeof(struct fingerprint), 1, f)) {
+    struct fingerprint fp;
+    while(fread(&fp, sizeof(struct fingerprint), 1, f)) {
         count++;
+        fps.push_back(fp);
     }
     fclose(f);
     return count;
@@ -182,4 +184,12 @@ int get_last_id_from_file(std::string filename) {
     fread(&fp, sizeof(struct fingerprint), 1, f);
     print_fingerprint_struct(fp);
     return fp.id;
+}
+
+int get_new_fingerprint_id(int last_id) {
+    if (last_id%5 == 0) {
+        return last_id+1;
+    } else {
+        return last_id+6-(last_id%5);
+    }
 }

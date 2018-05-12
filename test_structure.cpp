@@ -90,9 +90,10 @@ int main() {
     // printf("\n\nSAVING TO FILE\n");
     // save_to_file(3, fingerprints, "fingerprint_db");
 
-    struct fingerprint loads[5];
+    vector<struct fingerprint> loads;
     printf("\n\nLOADING FROM FILE\n");
-    int count = read_from_file(loads, "input_fp");
+    int count = read_from_file(loads, "fingerprint_db");
+    printf("LOADS size %d\n", (int)loads.size());
 
     printf("Loaded fingerprint : %d\n", count);
     for (int i=0 ; i<count ; i++)
@@ -100,5 +101,7 @@ int main() {
 
     int last_id = get_last_id_from_file("fingerprint_db");
     printf("Last id %d\n", last_id);
+    for (int i=0 ; i<14 ; i++)
+        printf("Last id %d Next fp id %d\n", i, get_new_fingerprint_id(i));
     return 0;
 }
