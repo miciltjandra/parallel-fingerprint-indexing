@@ -59,7 +59,7 @@ float byte_to_frequency(unsigned char c) {
     else return 1/result;
 }
 
-struct fingerprint make_fingerprint_struct(int id, float local_orientation[36], float local_coherence[36], float local_frequency[36], float avg_orie, float avg_freq) {
+struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq) {
     struct fingerprint result;
     result.id = id;
     for (int i=0 ; i<36 ; i++) {
@@ -96,11 +96,11 @@ void print_fingerprint_struct(struct fingerprint fp) {
     printf("Avg frequency : %d\n", (int)fp.avg_frequency);
 }
 
-void get_fingerprint_local_values(struct fingerprint fp, float local_orientation[36], float local_coherence[36], float local_frequency[36]) {
+void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency) {
     for (int i=0 ; i<36 ; i++) {
-        local_orientation[i] = byte_to_orientation(fp.local_orientation[i]);
-        local_coherence[i] = byte_to_coherence(fp.local_coherence[i]);
-        local_frequency[i] = byte_to_frequency(fp.local_frequency[i]);
+        local_orientation.push_back(byte_to_orientation(fp.local_orientation[i]));
+        local_coherence.push_back(byte_to_coherence(fp.local_coherence[i]));
+        local_frequency.push_back(byte_to_frequency(fp.local_frequency[i]));
     }
 }
 
@@ -112,9 +112,11 @@ float get_fingerprint_average_frequency(struct fingerprint fp) {
     return byte_to_frequency(fp.avg_frequency);
 }
 
-void save_to_file(int size, struct fingerprint fps[]) {
+void save_to_file(int size, struct fingerprint fps[], std::string filename) {
     FILE *f;
-    f = fopen("fingerprint_db", "ab+");
+    char fname[filename.length()+1];
+    strcpy(fname, filename.c_str());
+    f = fopen(fname, "ab+");
 
     fwrite(&fps[0], sizeof(struct fingerprint), size, f);
 
@@ -138,12 +140,16 @@ void save_to_file(int size, struct fingerprint fps[]) {
     fclose(f);
 }
 
-int read_from_file(struct fingerprint fps[]) {
+int read_from_file(struct fingerprint fps[], std::string filename) {
     FILE *f;
-    f = fopen("fingerprint_db", "rb");
+    char fname[filename.length()+1];
+    strcpy(fname, filename.c_str());
+    f = fopen(fname, "rb");
     if (f == NULL) {
-        fprintf(stderr, "\nError opening file\n");
+        fprintf(stderr, "\nError opening file %s\n", fname);
         return 0;
+    } else {
+        printf("Successful opening %sa\n", fname);
     }
 
     int count = 0;
@@ -153,4 +159,27 @@ int read_from_file(struct fingerprint fps[]) {
     }
     fclose(f);
     return count;
+}
+
+int get_last_id_from_file(std::string filename) {
+    FILE *f;
+    char fname[filename.length()+1];
+    strcpy(fname, filename.c_str());
+    f = fopen(fname, "rb");
+    if (f == NULL) {
+        fprintf(stderr, "\nError opening file %s\n", fname);
+        return 0;
+    }
+    fseek(f, 0, SEEK_END);
+    printf("\nFTELL %ld\n\n", ftell(f));
+    if (ftell(f) < sizeof(struct fingerprint)) {
+        printf("File empty/corrupt\n");
+        return 0;
+    }
+    fseek(f, -sizeof(struct fingerprint), SEEK_END);
+    printf("\nFTELL %ld\n\n", ftell(f));
+    struct fingerprint fp;
+    fread(&fp, sizeof(struct fingerprint), 1, f);
+    print_fingerprint_struct(fp);
+    return fp.id;
 }

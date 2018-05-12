@@ -1,7 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
-#include "fingerprint_structure.h"
+#include "fingerprint_structure.hpp"
 using namespace cv;
 using namespace std;
 
@@ -578,7 +578,10 @@ int main(int argc, char** argv) {
 
 	waitKey(0);
 
+	int last_id = get_last_id_from_file("fingerprint_db");
+    printf("Last id %d\n", last_id);
+
 	return 0;
 }
 
-// g++ -ggdb feature_extraction.cpp -o feature_extraction `pkg-config --cflags --libs opencv`
+// g++ -ggdb feature_extraction.cpp -o feature_extraction `pkg-config --cflags --libs opencv` fingerprint_structure.cpp

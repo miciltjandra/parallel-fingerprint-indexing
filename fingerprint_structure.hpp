@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <vector>
+#include <string>
+#include <cstring>
 
 // static const float orientation_unit = 0.703125;
 static const float orientation_unit = 180.0f/256.0f;
@@ -34,18 +36,20 @@ unsigned char period_to_byte(float period);
 
 float byte_to_period(unsigned char c);
 
-struct fingerprint make_fingerprint_struct(int id, float local_orientation[36], float local_coherence[36], float local_frequency[36], float avg_orie, float avg_freq);
+struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq);
 
 void print_fingerprint_struct(struct fingerprint fp);
 
-void get_fingerprint_local_values(struct fingerprint fp, float local_orientation[36], float local_coherence[36], float local_frequency[36]);
+void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency);
 
 float get_fingerprint_average_orientation(struct fingerprint fp);
 
 float get_fingerprint_average_frequency(struct fingerprint fp);
 
-void save_to_file(int size, struct fingerprint fps[]);
+void save_to_file(int size, struct fingerprint fps[], std::string filename);
 
-int read_from_file(struct fingerprint fps[]);
+int read_from_file(struct fingerprint fps[], std::string filename);
+
+int get_last_id_from_file(std::string filename);
 
 #endif

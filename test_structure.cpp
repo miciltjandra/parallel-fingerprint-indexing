@@ -1,4 +1,6 @@
 #include "fingerprint_structure.hpp"
+#define ARRAY_SIZE 36
+using namespace std;
 
 int main() {
     float a = 104.3;
@@ -43,28 +45,41 @@ int main() {
     float avg_orie_3 = 1.22509;
     float avg_freq_3 = 0.130515;
 
+    vector<float>orie_1(l_orie_1, l_orie_1 + ARRAY_SIZE);
+    vector<float>cohe_1(l_cohe_1, l_cohe_1 + ARRAY_SIZE);
+    vector<float>freq_1(l_freq_1, l_freq_1 + ARRAY_SIZE);
+
+    vector<float>orie_2(l_orie_2, l_orie_2 + ARRAY_SIZE);
+    vector<float>cohe_2(l_cohe_2, l_cohe_2 + ARRAY_SIZE);
+    vector<float>freq_2(l_freq_2, l_freq_2 + ARRAY_SIZE);
+
+    vector<float>orie_3(l_orie_3, l_orie_3 + ARRAY_SIZE);
+    vector<float>cohe_3(l_cohe_3, l_cohe_3 + ARRAY_SIZE);
+    vector<float>freq_3(l_freq_3, l_freq_3 + ARRAY_SIZE);
+
     struct fingerprint fingerprints[3];
-    fingerprints[0] = make_fingerprint_struct(1, l_orie_1, l_cohe_1, l_freq_1, avg_orie_1, avg_freq_1);
-    fingerprints[1] = make_fingerprint_struct(2, l_orie_2, l_cohe_2, l_freq_2, avg_orie_2, avg_freq_2);
-    fingerprints[2] = make_fingerprint_struct(3, l_orie_3, l_cohe_3, l_freq_3, avg_orie_3, avg_freq_3);
+    fingerprints[0] = make_fingerprint_struct(1, orie_1, cohe_1, freq_1, avg_orie_1, avg_freq_1);
+    fingerprints[1] = make_fingerprint_struct(2, orie_2, cohe_2, freq_2, avg_orie_2, avg_freq_2);
+    fingerprints[2] = make_fingerprint_struct(3, orie_3, cohe_3, freq_3, avg_orie_3, avg_freq_3);
 
-    print_fingerprint_struct(fingerprints[0]);
+    for (int i=0 ; i<3 ; i++)
+        print_fingerprint_struct(fingerprints[i]);
 
-    float local_orie[36], local_cohe[36], local_freq[36];
+    vector<float> local_orie, local_cohe, local_freq;
     get_fingerprint_local_values(fingerprints[0], local_orie, local_cohe, local_freq);
-    // printf("Orie\n");
-    // for (int i=0 ; i<36 ; i++) {
-    //     printf("%f ", local_orie[i]);
-    // }
-    // printf("\nCohe\n");
-    // for (int i=0 ; i<36 ; i++) {
-    //     printf("%f ", local_cohe[i]);
-    // }
-    // printf("\nFreq\n");
-    // for (int i=0 ; i<36 ; i++) {
-    //     printf("%f ", local_freq[i]);
-    // }
-    // printf("\n");
+    printf("Orie\n");
+    for (int i=0 ; i<36 ; i++) {
+        printf("%f ", local_orie[i]);
+    }
+    printf("\nCohe\n");
+    for (int i=0 ; i<36 ; i++) {
+        printf("%f ", local_cohe[i]);
+    }
+    printf("\nFreq\n");
+    for (int i=0 ; i<36 ; i++) {
+        printf("%f ", local_freq[i]);
+    }
+    printf("\n");
 
     float avg_o = get_fingerprint_average_orientation(fingerprints[0]);
     float avg_f = get_fingerprint_average_frequency(fingerprints[0]);
@@ -73,14 +88,17 @@ int main() {
     // printf("Avg freq %f\n", avg_f);
 
     // printf("\n\nSAVING TO FILE\n");
-    // save_to_file(3, fingerprints);
+    // save_to_file(3, fingerprints, "fingerprint_db");
 
     struct fingerprint loads[5];
     printf("\n\nLOADING FROM FILE\n");
-    int count = read_from_file(loads);
+    int count = read_from_file(loads, "input_fp");
 
     printf("Loaded fingerprint : %d\n", count);
     for (int i=0 ; i<count ; i++)
         print_fingerprint_struct(loads[i]);
+
+    int last_id = get_last_id_from_file("fingerprint_db");
+    printf("Last id %d\n", last_id);
     return 0;
 }
