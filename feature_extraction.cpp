@@ -578,8 +578,24 @@ int main(int argc, char** argv) {
 
 	waitKey(0);
 
-	int last_id = get_last_id_from_file("fingerprint_db");
-    printf("Last id %d\n", last_id);
+	int next_id = get_new_fingerprint_id(get_last_id_from_file("fingerprint_db"));
+    printf("Next id %d\n", next_id);
+	cout << "Save how many cores?\n";
+	int ans;
+	cin >> ans;
+	if (ans) {
+		int num = min(min((int)cores.size(), ans), 5);
+		struct fingerprint fingerprints[num];
+		for (int i=0 ; i<num ; i++) {
+			vector<float> local_orie, local_coherence, local_freq;
+			get_local_values(orie, coherence, freq, mask, cores[i].first, cores[i].second, local_orie, local_coherence, local_freq);
+			fingerprints[i] = make_fingerprint_struct(next_id+i, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
+		}
+		save_to_file(num, fingerprints, "fingerprint_db");
+		cout << num << " cores saved\n";
+	} else {
+		cout << "Fingerprint isn't saved\n";
+	}
 
 	return 0;
 }
