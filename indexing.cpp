@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include "fingerprint_structure.hpp"
 using namespace std;
 
@@ -52,6 +53,69 @@ float calculate_s4(float local_orie_1, float local_orie_2) {
 float calculate_s(float s1, float s2, float s3, float s4) {
     float result = w1*s1 + w2*s2 + w3*s3 + w4*s4;
     return result;
+}
+
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
+        return 0;
+    }
+    string fp_filename = argv[1];
+    string db_filename = argv[2];
+    cerr << "FP " << fp_filename << " DB " << db_filename << endl;
+
+    // Read the fingerprint to be searched
+    vector<struct fingerprint> fp;
+    int count_fp = read_from_file(fp, fp_filename);
+    cerr << count_fp << endl;
+
+    vector<float> local_orie, local_cohe, local_freq;
+    get_fingerprint_local_values(fp[0], local_orie, local_cohe, local_freq);
+    float avg_o = get_fingerprint_average_orientation(fp[0]);
+    float avg_f = get_fingerprint_average_frequency(fp[0]);
+
+    // Read the database
+    vector<struct fingerprint> db;
+    int count_db = read_from_file(db, db_filename);
+    cerr << count_db << endl;
+
+    // Vector for sorting s value
+    vector< pair<float, int> > best_matches;
+
+    for (int i=0 ; i<count_db ; i++) {
+        cout << "DB fingerprint ID " << db[i].id << endl;
+        vector<float> db_local_orie, db_local_cohe, db_local_freq;
+        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
+        float db_avg_o = get_fingerprint_average_orientation(db[0]);
+        float db_avg_f = get_fingerprint_average_frequency(db[0]);
+
+        float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
+
+        cout << "s1 " << s1 << endl;
+
+        float s2 = calculate_s2(local_freq, db_local_freq);
+
+        cout << "s2 " << s2 << endl;
+
+        float s3 = calculate_s3(avg_f, db_avg_f);
+
+        cout << "s3 " << s3 << endl;
+
+        float s4 = calculate_s4(avg_o, db_avg_o);
+
+        cout << "s4 " << s4 << endl;
+
+        float s = calculate_s(s1,s2,s3,s4);
+
+        cout << "s " << s << endl;
+        best_matches.push_back(make_pair(s, db[i].id));
+    }
+    sort(best_matches.rbegin(), best_matches.rend());
+    cout << "\nBest matches\n";
+    for (int i=0 ; i<best_matches.size() ; i++) {
+        cout << "ID " << best_matches[i].second << "\t: " << best_matches[i].first << endl;
+    }
+    return 0;
 }
 
 /*int main() {
@@ -111,59 +175,5 @@ float calculate_s(float s1, float s2, float s3, float s4) {
 
     return 0;
 }*/
-
-int main(int argc, char** argv) {
-    if (argc < 3) {
-        cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
-        return 0;
-    }
-    string fp_filename = argv[1];
-    string db_filename = argv[2];
-    cerr << "FP " << fp_filename << " DB " << db_filename << endl;
-
-    // Read the fingerprint to be searched
-    vector<struct fingerprint> fp;
-    int count_fp = read_from_file(fp, fp_filename);
-    cerr << count_fp << endl;
-
-    vector<float> local_orie, local_cohe, local_freq;
-    get_fingerprint_local_values(fp[0], local_orie, local_cohe, local_freq);
-    float avg_o = get_fingerprint_average_orientation(fp[0]);
-    float avg_f = get_fingerprint_average_frequency(fp[0]);
-
-    // Read the database
-    vector<struct fingerprint> db;
-    int count_db = read_from_file(db, db_filename);
-    cerr << count_db << endl;
-
-    for (int i=0 ; i<count_db ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
-        vector<float> db_local_orie, db_local_cohe, db_local_freq;
-        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
-        float db_avg_o = get_fingerprint_average_orientation(db[0]);
-        float db_avg_f = get_fingerprint_average_frequency(db[0]);
-
-        float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
-
-        cout << "s1 " << s1 << endl;
-
-        float s2 = calculate_s2(local_freq, db_local_freq);
-
-        cout << "s2 " << s2 << endl;
-
-        float s3 = calculate_s3(avg_f, db_avg_f);
-
-        cout << "s3 " << s3 << endl;
-
-        float s4 = calculate_s4(avg_o, db_avg_o);
-
-        cout << "s4 " << s4 << endl;
-
-        float s = calculate_s(s1,s2,s3,s4);
-
-        cout << "s " << s << endl;
-    }
-    return 0;
-}
 
 // g++ -o indexing indexing.cpp fingerprint_structure.cpp

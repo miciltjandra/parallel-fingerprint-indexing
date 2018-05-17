@@ -99,9 +99,11 @@ int main() {
     for (int i=0 ; i<count ; i++)
         print_fingerprint_struct(loads[i]);
 
-    int last_id = get_last_id_from_file("fingerprint_db");
-    printf("Last id %d\n", last_id);
-    for (int i=0 ; i<14 ; i++)
-        printf("Last id %d Next fp id %d\n", i, get_new_fingerprint_id(i));
+    // int last_id = get_last_id_from_file("fingerprint_db");
+    // printf("Last id %d\n", last_id);
+    // for (int i=0 ; i<14 ; i++)
+    //     printf("Last id %d Next fp id %d\n", i, get_new_fingerprint_id(i));
     return 0;
 }
+
+// g++ -o test_structure test_structure.cpp fingerprint_structure.cpp
