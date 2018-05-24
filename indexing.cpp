@@ -13,7 +13,7 @@ const float w2 = 0.37f;
 const float w3 = 0.16f;
 const float w4 = 0.31f;
 
-float calculate_s1(vector<float> local_orie_1, vector<float> local_coherence_1, vector<float> local_orie_2, vector<float> local_coherence_2) {
+float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local_coherence_1, const vector<float> &local_orie_2, const vector<float> &local_coherence_2) {
     float sum1 = 0.0f, sum2 = 0.0f, sum3 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
         float s = local_coherence_1[i] * local_coherence_2[i];
@@ -30,7 +30,7 @@ float calculate_s1(vector<float> local_orie_1, vector<float> local_coherence_1, 
     return result;
 }
 
-float calculate_s2(vector<float> local_freq_1, vector<float> local_freq_2) {
+float calculate_s2(const vector<float> &local_freq_1, const vector<float> &local_freq_2) {
     float sum1 = 0.0f, sum2 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
         sum1 += abs(local_freq_1[i]-local_freq_2[i]);
@@ -40,19 +40,64 @@ float calculate_s2(vector<float> local_freq_1, vector<float> local_freq_2) {
     return result;
 }
 
-float calculate_s3(float avg_freq_1, float avg_freq_2) {
+float calculate_s3(const float &avg_freq_1, const float &avg_freq_2) {
     float result = 1 - (abs(avg_freq_1-avg_freq_2)/max(avg_freq_1, avg_freq_2));
     return result;
 }
 
-float calculate_s4(float local_orie_1, float local_orie_2) {
+float calculate_s4(const float &local_orie_1, const float &local_orie_2) {
     float result = 1-(abs(local_orie_1-local_orie_2)/M_PI);
     return result;
 }
 
-float calculate_s(float s1, float s2, float s3, float s4) {
+float calculate_s(const float &s1, const float &s2, const float &s3, const float &s4) {
     float result = w1*s1 + w2*s2 + w3*s3 + w4*s4;
     return result;
+}
+
+void get_top_fingerprints(const struct fingerprint &fp, vector<struct fingerprint> db, vector< pair<float, int> > results, int t) {
+    int best_core_idx = 0;
+    float best_core_s1 = 0;
+    vector<float> fp_local_orie, fp_local_cohe, fp_local_freq;
+    get_fingerprint_local_values(fp, fp_local_orie, fp_local_cohe, fp_local_freq);
+    float fp_avg_orie = get_fingerprint_average_orientation(fp);
+    float fp_avg_freq = get_fingerprint_average_frequency(fp);
+    int n = db.size();
+    for (int i=0 ; i<n ; i++) { 
+        int current_id = db[i+1].id;
+        vector<float> db_local_orie, db_local_cohe, db_local_freq;
+        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
+
+        float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
+        if (s1 > best_core_s1) {
+            best_core_idx = i;
+            best_core_s1 = s1;
+        }
+
+        // Last core for a fingerprint
+        if (i<n-1 && (db[i+1].id%5 == 1)) {
+            get_fingerprint_local_values(db[best_core_idx], db_local_orie, db_local_cohe, db_local_freq);
+            float db_avg_o = get_fingerprint_average_orientation(db[best_core_idx]);
+            float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
+
+            float s2 = calculate_s2(fp_local_freq, db_local_freq);
+
+            cout << "s2 " << s2 << endl;
+
+            float s3 = calculate_s3(fp_avg_freq, db_avg_f);
+
+            cout << "s3 " << s3 << endl;
+
+            float s4 = calculate_s4(fp_avg_orie, db_avg_o);
+
+            cout << "s4 " << s4 << endl;
+
+            float s = calculate_s(s1,s2,s3,s4);
+
+            cout << "s " << s << endl;
+            results.push_back(make_pair(s, db[best_core_idx].id));
+        }
+    }
 }
 
 int main(int argc, char** argv) {
