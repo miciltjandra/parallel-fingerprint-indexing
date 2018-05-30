@@ -55,18 +55,19 @@ float calculate_s(const float &s1, const float &s2, const float &s3, const float
     return result;
 }
 
-void get_top_fingerprints(const struct fingerprint &fp, vector<struct fingerprint> db, vector< pair<float, int> > results, int t) {
+void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fingerprint> &db, vector< pair<float, int> > &results) {
     int best_core_idx = 0;
     float best_core_s1 = 0;
     vector<float> fp_local_orie, fp_local_cohe, fp_local_freq;
     get_fingerprint_local_values(fp, fp_local_orie, fp_local_cohe, fp_local_freq);
+    
     float fp_avg_orie = get_fingerprint_average_orientation(fp);
     float fp_avg_freq = get_fingerprint_average_frequency(fp);
     int n = db.size();
-    for (int i=0 ; i<n ; i++) { 
+    for (int i=0 ; i<n ; i++) {
         int current_id = db[i+1].id;
-        vector<float> db_local_orie, db_local_cohe, db_local_freq;
-        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
+        vector<float> db_local_orie, db_local_cohe, stub;
+        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, stub);
 
         float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
         if (s1 > best_core_s1) {
@@ -76,7 +77,14 @@ void get_top_fingerprints(const struct fingerprint &fp, vector<struct fingerprin
 
         // Last core for a fingerprint
         if (i<n-1 && (db[i+1].id%5 == 1)) {
-            get_fingerprint_local_values(db[best_core_idx], db_local_orie, db_local_cohe, db_local_freq);
+            cerr << "Best core idx : " << best_core_idx << "-" << db[best_core_idx].id << " " << best_core_s1 <<  endl;
+            vector<float> db_local_freq;
+            get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
+            if (i==4) cerr << "\n\n\nDB LOCAL FREQ\n";
+            for (int j=0 ; j<db_local_freq.size() ; j++) {
+                if (i==4) cerr << db_local_freq[j] << " ";
+            }
+            if (i==4) cerr << "\n\n\n";
             float db_avg_o = get_fingerprint_average_orientation(db[best_core_idx]);
             float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
 
@@ -92,10 +100,12 @@ void get_top_fingerprints(const struct fingerprint &fp, vector<struct fingerprin
 
             cout << "s4 " << s4 << endl;
 
-            float s = calculate_s(s1,s2,s3,s4);
+            float s = calculate_s(best_core_s1,s2,s3,s4);
 
             cout << "s " << s << endl;
             results.push_back(make_pair(s, db[best_core_idx].id));
+            best_core_idx = i+1;
+            best_core_s1 = 0;
         }
     }
 }
@@ -131,8 +141,13 @@ int main(int argc, char** argv) {
         cout << "DB fingerprint ID " << db[i].id << endl;
         vector<float> db_local_orie, db_local_cohe, db_local_freq;
         get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
-        float db_avg_o = get_fingerprint_average_orientation(db[0]);
-        float db_avg_f = get_fingerprint_average_frequency(db[0]);
+        if (i==0) cerr << "\n\n\n LOCAL FREQ\n";
+        for (int j=0 ; j<db_local_freq.size() ; j++) {
+            if (i==0) cerr << db_local_freq[j] << " ";
+        }
+        if (i==0) cerr << "\n\n\n";
+        float db_avg_o = get_fingerprint_average_orientation(db[i]);
+        float db_avg_f = get_fingerprint_average_frequency(db[i]);
 
         float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
 
@@ -158,7 +173,15 @@ int main(int argc, char** argv) {
     sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest matches\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
-        cout << "ID " << best_matches[i].second << "\t: " << best_matches[i].first << endl;
+        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+(best_matches[i].second%5!=0) <<"\t: " << best_matches[i].first << endl;
+    }
+
+    vector< pair<float, int> > best_match;
+    get_top_fingerprints(fp[0], db, best_match);
+    sort(best_match.rbegin(), best_match.rend());
+    cout << "\nBest match\n";
+    for (int i=0 ; i<best_match.size() ; i++) {
+        cout << "ID " << best_match[i].second << "-"<< best_match[i].second/5+1 <<"\t: " << best_match[i].first << endl;
     }
     return 0;
 }
