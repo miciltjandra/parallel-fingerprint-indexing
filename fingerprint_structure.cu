@@ -1,6 +1,6 @@
 #include "fingerprint_structure.hpp"
 
-__host__ _device__ unsigned char orientation_to_byte(float orientation) {
+__host__ __device__ unsigned char orientation_to_byte(float orientation) {
     float fresult = orientation/orientation_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -9,13 +9,13 @@ __host__ _device__ unsigned char orientation_to_byte(float orientation) {
     return result;
 }
 
-__host__ _device__ float byte_to_orientation(unsigned char c) {
+__host__ __device__ float byte_to_orientation(unsigned char c) {
     float result = orientation_unit*(int)c;
     // printf("Result %f\n", result);
     return result;
 }
 
-__host__ _device__ unsigned char coherence_to_byte(float coherence) {
+__host__ __device__ unsigned char coherence_to_byte(float coherence) {
     float fresult = coherence * coherence_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -24,13 +24,13 @@ __host__ _device__ unsigned char coherence_to_byte(float coherence) {
     return result;
 }
 
-__host__ _device__ float byte_to_coherence(unsigned char c) {
+__host__ __device__ float byte_to_coherence(unsigned char c) {
     float result = (float)c/coherence_unit;
     // printf("Result %f\n", result);
     return result;
 }
 
-__host__ _device__ unsigned char period_to_byte(float period) {
+__host__ __device__ unsigned char period_to_byte(float period) {
     float fresult = period/period_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -39,13 +39,13 @@ __host__ _device__ unsigned char period_to_byte(float period) {
     return result;
 }
 
-__host__ _device__ float byte_to_period(unsigned char c) {
+__host__ __device__ float byte_to_period(unsigned char c) {
     float result = period_unit*(int)c;
     // printf("Result %f\n", result);
     return result;
 }
 
-__host__ _device__ unsigned char frequency_to_byte(float frequency) {
+__host__ __device__ unsigned char frequency_to_byte(float frequency) {
     if (frequency == 0) {
         return period_to_byte(frequency);
     } else {
@@ -53,13 +53,13 @@ __host__ _device__ unsigned char frequency_to_byte(float frequency) {
     }
 }
 
-__host__ _device__ float byte_to_frequency(unsigned char c) {
+__host__ __device__ float byte_to_frequency(unsigned char c) {
     float result = byte_to_period(c);
     if (result == 0) return result;
     else return 1/result;
 }
 
-__host__ _device__ struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq) {
+__host__ __device__ struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq) {
     struct fingerprint result;
     result.id = id;
     for (int i=0 ; i<36 ; i++) {
@@ -72,7 +72,7 @@ __host__ _device__ struct fingerprint make_fingerprint_struct(int id, std::vecto
     return result;
 }
 
-__host__ _device__ void print_fingerprint_struct(struct fingerprint fp) {
+__host__ __device__ void print_fingerprint_struct(struct fingerprint fp) {
     printf("ID %d\n", fp.id);
     printf("Local orientation\n");
     for (int i=0 ; i<36 ; i++) {
@@ -96,7 +96,7 @@ __host__ _device__ void print_fingerprint_struct(struct fingerprint fp) {
     printf("Avg frequency : %d\n", (int)fp.avg_frequency);
 }
 
-__host__ _device__ void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency) {
+__host__ __device__ void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency) {
     for (int i=0 ; i<36 ; i++) {
         local_orientation.push_back(byte_to_orientation(fp.local_orientation[i]));
         local_coherence.push_back(byte_to_coherence(fp.local_coherence[i]));
@@ -104,15 +104,15 @@ __host__ _device__ void get_fingerprint_local_values(struct fingerprint fp, std:
     }
 }
 
-__host__ _device__ float get_fingerprint_average_orientation(struct fingerprint fp) {
+__host__ __device__ float get_fingerprint_average_orientation(struct fingerprint fp) {
     return byte_to_orientation(fp.avg_orientation);
 }
 
-__host__ _device__ float get_fingerprint_average_frequency(struct fingerprint fp) {
+__host__ __device__ float get_fingerprint_average_frequency(struct fingerprint fp) {
     return byte_to_frequency(fp.avg_frequency);
 }
 
-__host__ _device__ void save_to_file(int size, struct fingerprint fps[], std::string filename) {
+__host__ __device__ void save_to_file(int size, struct fingerprint fps[], std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -140,7 +140,7 @@ __host__ _device__ void save_to_file(int size, struct fingerprint fps[], std::st
     fclose(f);
 }
 
-__host__ _device__ int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
+__host__ __device__ int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -163,7 +163,7 @@ __host__ _device__ int read_from_file(std::vector<struct fingerprint> &fps, std:
     return count;
 }
 
-__host__ _device__ int get_last_id_from_file(std::string filename) {
+__host__ __device__ int get_last_id_from_file(std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -186,7 +186,7 @@ __host__ _device__ int get_last_id_from_file(std::string filename) {
     return fp.id;
 }
 
-__host__ _device__ int get_new_fingerprint_id(int last_id) {
+__host__ __device__ int get_new_fingerprint_id(int last_id) {
     if (last_id%5 == 0) {
         return last_id+1;
     } else {
