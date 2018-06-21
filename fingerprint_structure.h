@@ -42,22 +42,22 @@ CUDA_HOSTDEV unsigned char period_to_byte(float period);
 
 CUDA_HOSTDEV float byte_to_period(unsigned char c);
 
-CUDA_HOSTDEV struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq);
+struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq);
 
-CUDA_HOSTDEV void print_fingerprint_struct(struct fingerprint fp);
+void print_fingerprint_struct(struct fingerprint fp);
 
-CUDA_HOSTDEV void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency);
+void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency);
 
-CUDA_HOSTDEV float get_fingerprint_average_orientation(struct fingerprint fp);
+float get_fingerprint_average_orientation(struct fingerprint fp);
 
-CUDA_HOSTDEV float get_fingerprint_average_frequency(struct fingerprint fp);
+float get_fingerprint_average_frequency(struct fingerprint fp);
 
-CUDA_HOSTDEV void save_to_file(int size, struct fingerprint fps[], std::string filename);
+void save_to_file(int size, struct fingerprint fps[], std::string filename);
 
-CUDA_HOSTDEV int read_from_file(std::vector<struct fingerprint> &fps, std::string filename);
+int read_from_file(std::vector<struct fingerprint> &fps, std::string filename);
 
-CUDA_HOSTDEV int get_last_id_from_file(std::string filename);
+int get_last_id_from_file(std::string filename);
 
-CUDA_HOSTDEV int get_new_fingerprint_id(int last_id);
+int get_new_fingerprint_id(int last_id);
 
 #endif

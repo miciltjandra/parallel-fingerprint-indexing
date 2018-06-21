@@ -1,6 +1,6 @@
 #include "fingerprint_structure.hpp"
 
-CUDA_HOSTDEV unsigned char orientation_to_byte(float orientation) {
+unsigned char orientation_to_byte(float orientation) {
     float fresult = orientation/orientation_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -9,13 +9,13 @@ CUDA_HOSTDEV unsigned char orientation_to_byte(float orientation) {
     return result;
 }
 
-CUDA_HOSTDEV float byte_to_orientation(unsigned char c) {
+float byte_to_orientation(unsigned char c) {
     float result = orientation_unit*(int)c;
     // printf("Result %f\n", result);
     return result;
 }
 
-CUDA_HOSTDEV unsigned char coherence_to_byte(float coherence) {
+unsigned char coherence_to_byte(float coherence) {
     float fresult = coherence * coherence_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -24,13 +24,13 @@ CUDA_HOSTDEV unsigned char coherence_to_byte(float coherence) {
     return result;
 }
 
-CUDA_HOSTDEV float byte_to_coherence(unsigned char c) {
+float byte_to_coherence(unsigned char c) {
     float result = (float)c/coherence_unit;
     // printf("Result %f\n", result);
     return result;
 }
 
-CUDA_HOSTDEV unsigned char period_to_byte(float period) {
+unsigned char period_to_byte(float period) {
     float fresult = period/period_unit;
     unsigned char result = (char)fresult;
     // printf("Result %f\n", fresult);
@@ -39,13 +39,13 @@ CUDA_HOSTDEV unsigned char period_to_byte(float period) {
     return result;
 }
 
-CUDA_HOSTDEV float byte_to_period(unsigned char c) {
+float byte_to_period(unsigned char c) {
     float result = period_unit*(int)c;
     // printf("Result %f\n", result);
     return result;
 }
 
-CUDA_HOSTDEV unsigned char frequency_to_byte(float frequency) {
+unsigned char frequency_to_byte(float frequency) {
     if (frequency == 0) {
         return period_to_byte(frequency);
     } else {
@@ -53,13 +53,13 @@ CUDA_HOSTDEV unsigned char frequency_to_byte(float frequency) {
     }
 }
 
-CUDA_HOSTDEV float byte_to_frequency(unsigned char c) {
+float byte_to_frequency(unsigned char c) {
     float result = byte_to_period(c);
     if (result == 0) return result;
     else return 1/result;
 }
 
-CUDA_HOSTDEV struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq) {
+struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq) {
     struct fingerprint result;
     result.id = id;
     for (int i=0 ; i<36 ; i++) {
@@ -72,7 +72,7 @@ CUDA_HOSTDEV struct fingerprint make_fingerprint_struct(int id, std::vector<floa
     return result;
 }
 
-CUDA_HOSTDEV void print_fingerprint_struct(struct fingerprint fp) {
+void print_fingerprint_struct(struct fingerprint fp) {
     printf("ID %d\n", fp.id);
     printf("Local orientation\n");
     for (int i=0 ; i<36 ; i++) {
@@ -96,7 +96,7 @@ CUDA_HOSTDEV void print_fingerprint_struct(struct fingerprint fp) {
     printf("Avg frequency : %d\n", (int)fp.avg_frequency);
 }
 
-CUDA_HOSTDEV void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency) {
+void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency) {
     for (int i=0 ; i<36 ; i++) {
         local_orientation.push_back(byte_to_orientation(fp.local_orientation[i]));
         local_coherence.push_back(byte_to_coherence(fp.local_coherence[i]));
@@ -104,15 +104,15 @@ CUDA_HOSTDEV void get_fingerprint_local_values(struct fingerprint fp, std::vecto
     }
 }
 
-CUDA_HOSTDEV float get_fingerprint_average_orientation(struct fingerprint fp) {
+float get_fingerprint_average_orientation(struct fingerprint fp) {
     return byte_to_orientation(fp.avg_orientation);
 }
 
-CUDA_HOSTDEV float get_fingerprint_average_frequency(struct fingerprint fp) {
+float get_fingerprint_average_frequency(struct fingerprint fp) {
     return byte_to_frequency(fp.avg_frequency);
 }
 
-CUDA_HOSTDEV void save_to_file(int size, struct fingerprint fps[], std::string filename) {
+void save_to_file(int size, struct fingerprint fps[], std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -140,7 +140,7 @@ CUDA_HOSTDEV void save_to_file(int size, struct fingerprint fps[], std::string f
     fclose(f);
 }
 
-CUDA_HOSTDEV int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
+int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -163,7 +163,7 @@ CUDA_HOSTDEV int read_from_file(std::vector<struct fingerprint> &fps, std::strin
     return count;
 }
 
-CUDA_HOSTDEV int get_last_id_from_file(std::string filename) {
+int get_last_id_from_file(std::string filename) {
     FILE *f;
     char fname[filename.length()+1];
     strcpy(fname, filename.c_str());
@@ -186,7 +186,7 @@ CUDA_HOSTDEV int get_last_id_from_file(std::string filename) {
     return fp.id;
 }
 
-CUDA_HOSTDEV int get_new_fingerprint_id(int last_id) {
+int get_new_fingerprint_id(int last_id) {
     if (last_id%5 == 0) {
         return last_id+1;
     } else {
