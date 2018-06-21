@@ -1,4 +1,4 @@
-#include "fingerprint_structure.hpp"
+#include "fingerprint_structure.h"
 
 unsigned char orientation_to_byte(float orientation) {
     float fresult = orientation/orientation_unit;
@@ -114,8 +114,8 @@ float get_fingerprint_average_frequency(struct fingerprint fp) {
 
 void save_to_file(int size, struct fingerprint fps[], std::string filename) {
     FILE *f;
-    char fname[filename.length()+1];
-    strcpy(fname, filename.c_str());
+    const char* fname = filename.c_str();
+    // strcpy(fname, filename.c_str());
     f = fopen(fname, "ab+");
 
     fwrite(&fps[0], sizeof(struct fingerprint), size, f);
@@ -142,8 +142,8 @@ void save_to_file(int size, struct fingerprint fps[], std::string filename) {
 
 int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
     FILE *f;
-    char fname[filename.length()+1];
-    strcpy(fname, filename.c_str());
+    const char* fname = filename.c_str();
+    // strcpy(fname, filename.c_str());
     f = fopen(fname, "rb");
     if (f == NULL) {
         fprintf(stderr, "\nError opening file %s\n", fname);
@@ -165,8 +165,8 @@ int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
 
 int get_last_id_from_file(std::string filename) {
     FILE *f;
-    char fname[filename.length()+1];
-    strcpy(fname, filename.c_str());
+    const char* fname = filename.c_str();
+    // strcpy(fname, filename.c_str());
     f = fopen(fname, "rb");
     if (f == NULL) {
         fprintf(stderr, "\nError opening file %s\n", fname);
