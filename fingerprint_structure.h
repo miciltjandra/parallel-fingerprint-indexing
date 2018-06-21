@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <vector>
+#include <string>
+#include <cstring>
 
 // static const float orientation_unit = 0.703125;
 static const float orientation_unit = 180.0f/256.0f;
@@ -18,34 +20,38 @@ struct fingerprint {
     unsigned char avg_frequency; 
 };
 
-unsigned char orientation_to_byte(float orientation);
+__host__ _device__ unsigned char orientation_to_byte(float orientation);
 
-float byte_to_orientation(unsigned char c);
+__host__ _device__ float byte_to_orientation(unsigned char c);
 
-unsigned char coherence_to_byte(float coherence);
+__host__ _device__ unsigned char coherence_to_byte(float coherence);
 
-float byte_to_coherence(unsigned char c);
+__host__ _device__ float byte_to_coherence(unsigned char c);
 
-unsigned char frequency_to_byte(float frequency);
+__host__ _device__ unsigned char frequency_to_byte(float frequency);
 
-float byte_to_frequency(unsigned char c);
+__host__ _device__ float byte_to_frequency(unsigned char c);
 
-unsigned char period_to_byte(float period);
+__host__ _device__ unsigned char period_to_byte(float period);
 
-float byte_to_period(unsigned char c);
+__host__ _device__ float byte_to_period(unsigned char c);
 
-struct fingerprint make_fingerprint_struct(int id, float local_orientation[36], float local_coherence[36], float local_frequency[36], float avg_orie, float avg_freq);
+__host__ _device__ struct fingerprint make_fingerprint_struct(int id, std::vector<float> local_orientation, std::vector<float> local_coherence, std::vector<float> local_frequency, float avg_orie, float avg_freq);
 
-void print_fingerprint_struct(struct fingerprint fp);
+__host__ _device__ void print_fingerprint_struct(struct fingerprint fp);
 
-void get_fingerprint_local_values(struct fingerprint fp, float local_orientation[36], float local_coherence[36], float local_frequency[36]);
+__host__ _device__ void get_fingerprint_local_values(struct fingerprint fp, std::vector<float> &local_orientation, std::vector<float> &local_coherence, std::vector<float> &local_frequency);
 
-float get_fingerprint_average_orientation(struct fingerprint fp);
+__host__ _device__ float get_fingerprint_average_orientation(struct fingerprint fp);
 
-float get_fingerprint_average_frequency(struct fingerprint fp);
+__host__ _device__ float get_fingerprint_average_frequency(struct fingerprint fp);
 
-void save_to_file(int size, struct fingerprint fps[]);
+__host__ _device__ void save_to_file(int size, struct fingerprint fps[], std::string filename);
 
-int read_from_file(struct fingerprint fps[]);
+__host__ _device__ int read_from_file(std::vector<struct fingerprint> &fps, std::string filename);
+
+__host__ _device__ int get_last_id_from_file(std::string filename);
+
+__host__ _device__ int get_new_fingerprint_id(int last_id);
 
 #endif

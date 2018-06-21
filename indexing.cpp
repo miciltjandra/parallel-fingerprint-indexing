@@ -111,6 +111,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 }
 
 int main(int argc, char** argv) {
+    cout << sizeof(struct fingerprint) << endl;
     if (argc < 3) {
         cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
         return 0;
@@ -170,19 +171,19 @@ int main(int argc, char** argv) {
         cout << "s " << s << endl;
         best_matches.push_back(make_pair(s, db[i].id));
     }
-    sort(best_matches.rbegin(), best_matches.rend());
+    // sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest matches\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+(best_matches[i].second%5!=0) <<"\t: " << best_matches[i].first << endl;
     }
 
-    vector< pair<float, int> > best_match;
-    get_top_fingerprints(fp[0], db, best_match);
-    sort(best_match.rbegin(), best_match.rend());
-    cout << "\nBest match\n";
-    for (int i=0 ; i<best_match.size() ; i++) {
-        cout << "ID " << best_match[i].second << "-"<< best_match[i].second/5+1 <<"\t: " << best_match[i].first << endl;
-    }
+    // vector< pair<float, int> > best_match;
+    // get_top_fingerprints(fp[0], db, best_match);
+    // sort(best_match.rbegin(), best_match.rend());
+    // cout << "\nBest match\n";
+    // for (int i=0 ; i<best_match.size() ; i++) {
+    //     cout << "ID " << best_match[i].second << "-"<< best_match[i].second/5+1 <<"\t: " << best_match[i].first << endl;
+    // }
     return 0;
 }
 
