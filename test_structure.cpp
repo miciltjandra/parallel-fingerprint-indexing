@@ -1,4 +1,4 @@
-#include "fingerprint_structure.hpp"
+#include "fingerprint_structure.h"
 #define ARRAY_SIZE 36
 using namespace std;
 

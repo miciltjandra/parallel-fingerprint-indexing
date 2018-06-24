@@ -20,11 +20,17 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
         float d = local_orie_1[i] - local_orie_2[i];
 
         d = d * M_PI/180.0f * 2;
+        cout << i << " " << s*sin(d) << endl;
 
         sum1 += (s * cos(d));
         sum2 += (s * sin(d));
         sum3 += s;
     }
+    cout << endl;
+    cout << "ss = " << sum3 << endl;
+    cout << "scos = " << sum1 << endl;
+    cout << "ssin = " << sum2 << endl;
+    
     float result = sqrt(pow(sum1,2)+pow(sum2,2))/sum3;
 
     return result;
@@ -35,6 +41,7 @@ float calculate_s2(const vector<float> &local_freq_1, const vector<float> &local
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
         sum1 += abs(local_freq_1[i]-local_freq_2[i]);
         sum2 += local_freq_1[i]+local_freq_2[i];
+        cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << endl;
     }
     float result = 1 - (sum1/sum2);
     return result;
@@ -184,6 +191,52 @@ int main(int argc, char** argv) {
     // for (int i=0 ; i<best_match.size() ; i++) {
     //     cout << "ID " << best_match[i].second << "-"<< best_match[i].second/5+1 <<"\t: " << best_match[i].first << endl;
     // }
+
+    cout << "\n\nDebugging S1\n\n";
+
+    for (int i=0 ; i<3 ; i++) {
+        cout << "DB fingerprint ID " << db[i].id << endl;
+        vector<float> db_local_orie, db_local_cohe, db_local_freq;
+        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
+
+        float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
+
+        cout << "s1 " << s1 << endl;
+    }
+
+    cout << "\n\nDebugging S2\n\n";
+    for (int i=0 ; i<3 ; i++) {
+        cout << "DB fingerprint ID " << db[i].id << endl;
+        vector<float> db_local_orie, db_local_cohe, db_local_freq;
+        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
+
+        float s2 = calculate_s2(local_freq, db_local_freq);
+
+        cout << "s2 " << s2 << endl;
+    }
+
+    cout << "\n\nDebugging S3\n\n";
+    for (int i=0 ; i<3 ; i++) {
+        cout << "DB fingerprint ID " << db[i].id << endl;
+        float db_avg_o = get_fingerprint_average_orientation(db[i]);
+        float db_avg_f = get_fingerprint_average_frequency(db[i]);
+
+        float s3 = calculate_s3(avg_f, db_avg_f);
+
+        cout << "s3 " << s3 << endl;
+    }
+    
+    cout << "\n\nDebugging S4\n\n";
+    for (int i=0 ; i<3 ; i++) {
+        cout << "DB fingerprint ID " << db[i].id << endl;
+        float db_avg_o = get_fingerprint_average_orientation(db[i]);
+        float db_avg_f = get_fingerprint_average_frequency(db[i]);
+
+        float s4 = calculate_s4(avg_o, db_avg_o);
+
+        cout << "s4 " << s4 << endl;
+    }
+
     return 0;
 }
 
