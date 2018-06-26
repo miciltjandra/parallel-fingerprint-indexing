@@ -1,19 +1,16 @@
 #include <stdio.h>
 #include <iostream>
+#include <chrono>
 #include "fingerprint_structure.hpp"
 using namespace std;
 
 const int BLOCKSIZE = 36;
+
 // Constant weights
 const float w1 = 0.16f;
 const float w2 = 0.37f;
 const float w3 = 0.16f;
 const float w4 = 0.31f;
-
-__global__ void test(float *orie) {
-    int i = threadIdx.x;
-    orie[i] += i;
-}
 
 __host__ __device__ unsigned char dperiod_to_byte(float period) {
     float fresult = period/period_unit;
@@ -50,16 +47,11 @@ __device__ float dbyte_to_orientation(unsigned char c) {
     return result;
 }
 
-__global__ void teststruct(fingerprint* s) {
-    int i = threadIdx.x;
-    s->local_frequency[i] = dfrequency_to_byte(dbyte_to_frequency(s->local_frequency[i])+0.1);
-}
-
-__global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result, float* hs, float* hcos, float* hsin) {
+__global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
     __shared__ float ss, scos, ssin;
     int j = blockIdx.x;
     int i = threadIdx.x;
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    // int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (i == 0) {
         ss = 0;
         scos = 0;
@@ -67,33 +59,27 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result, fl
     }
     __syncthreads();
     // (db+j)->local_frequency[i] = dfrequency_t_byte(dbyte_to_frequency((db+j)->local_frequency[i])+0.1);
-    hs[idx] = i;
     float s = dbyte_to_coherence(fp->local_coherence[i])*dbyte_to_coherence((db+j)->local_coherence[i]);
     float d = M_PI/180.0f * 2 * (dbyte_to_orientation(fp->local_orientation[i])-dbyte_to_orientation((db+j)->local_orientation[i]));
     float tcos = s*cos(d);
     float tsin = s*sin(d);
 
-    hs[idx] = tsin;
     atomicAdd(&ss, s);
     atomicAdd(&scos, tcos);
     atomicAdd(&ssin, tsin);
     __syncthreads();
     if (i == 0) {
-        hcos[j] = scos;
-        hsin[j] = ssin;
-        hs[j] = ss;
         result[j] = sqrt(pow(scos,2)+pow(ssin,2))/ss;
     }
 }
 
-__global__ void calculate_s2(fingerprint* db, fingerprint* fp, float* result, float* hs) {
+__global__ void calculate_s2(fingerprint* db, fingerprint* fp, float* result) {
     __shared__ float s_addition, s_absdiff;
     int j = blockIdx.x;
     int i = threadIdx.x;
-    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    // int idx = blockIdx.x*blockDim.x + threadIdx.x;
     float t_addition = dbyte_to_frequency(fp->local_frequency[i]) + dbyte_to_frequency((db+j)->local_frequency[i]);
     float t_absdiff = abs(dbyte_to_frequency(fp->local_frequency[i]) - dbyte_to_frequency((db+j)->local_frequency[i]));
-    hs[idx] = t_absdiff;
     atomicAdd(&s_addition, t_addition);
     atomicAdd(&s_absdiff, t_absdiff);
     if (i == 0) {
@@ -129,7 +115,6 @@ int main(int argc, char** argv) {
     // Read the fingerprint to be searched
     vector<struct fingerprint> fp;
     int count_fp = read_from_file(fp, fp_filename);
-    cerr << count_fp << endl;
 
     vector<float> local_orie, local_cohe, local_freq;
     get_fingerprint_local_values(fp[0], local_orie, local_cohe, local_freq);
@@ -139,116 +124,77 @@ int main(int argc, char** argv) {
     // Read the database
     vector<struct fingerprint> db;
     int count_db = read_from_file(db, db_filename);
-    cerr << count_db << endl;
+    cerr << "Fingerprint database count : " << count_db << endl;
 
-    //Test struct
-    /*fingerprint f = fp[0];
-    fingerprint r;
-    fingerprint *d_f;
-    cudaMalloc((void **)&d_f, sizeof(fingerprint));
-    cudaMemcpy(d_f, &f, sizeof(f), cudaMemcpyHostToDevice);
-    teststruct<<<1,36>>>(d_f);
-    cudaMemcpy(&r, d_f, sizeof(f), cudaMemcpyDeviceToHost);
-    
-    for (int i=0 ; i<36 ; i++) {
-        cout << dbyte_to_frequency(f.local_frequency[i]) << " " << dbyte_to_frequency(f.local_frequency[i]) << endl;
-    }*/
-
+    auto timer_start = chrono::steady_clock::now();
     // Test S1
     fingerprint *d_fp, *d_db;
-    fingerprint r[3];
-    float s1_result[3], s2_result[3], s3_result[3], s4_result[3];
-    float result[3];
+    float s1_result[count_db], s2_result[count_db], s3_result[count_db], s4_result[count_db];
+    float result[count_db];
     float *d_result;
-    float scos[3], ssin[3];
-    float *s;
-    s = new float[3*36];
-    for (int i=0 ; i<108 ; i++) s[i] = -1;
-    float *d_s, *d_scos, *d_ssin;
     cudaMalloc((void **)&d_fp, sizeof(fingerprint));
-    cudaMalloc((void **)&d_db, 3*sizeof(fingerprint));
-    cudaMalloc((void **)&d_result, 3*sizeof(float));
-    cudaMalloc((void **)&d_s, 3*36*sizeof(float));
-    cudaMalloc((void **)&d_scos, 3*sizeof(float));
-    cudaMalloc((void **)&d_ssin, 3*sizeof(float));
-    cudaMemcpy(d_db, &db[0], 3*sizeof(fingerprint), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_fp, &fp[0], sizeof(fingerprint), cudaMemcpyHostToDevice);
-    calculate_s1<<<3,36>>>(d_db, d_fp, d_result, d_s, d_scos, d_ssin);
-    cudaMemcpy(&s1_result[0], d_result, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(s, d_s, 3*36*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&scos[0], d_scos, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&ssin[0], d_ssin, 3*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMalloc((void **)&d_db, count_db*sizeof(fingerprint));
+    cudaMalloc((void **)&d_result, count_db*sizeof(float));
 
-    for (int i=0 ; i<108 ; i++) {
-        cout << i << " " << s[i] << endl;
-    }
-    for (int i=0 ; i<3 ; i++) {
-        cout << i << " : ID " << db[i].id << endl;
-        cout << "s = " << s[i] << endl;
-        cout << "scos = " << scos[i] << endl;
-        cout << "ssin = " << ssin[i] << endl;
-        cout << "result = " << s1_result[i] << endl;
-    }
+    cudaMemcpy(d_db, &db[0], count_db*sizeof(fingerprint), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_fp, &fp[0], sizeof(fingerprint), cudaMemcpyHostToDevice);
+    calculate_s1<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    cudaMemcpy(&s1_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+
+    // for (int i=0 ; i<count_db ; i++) {
+    //     cout << i << " : ID " << db[i].id << endl;
+    //     cout << "result = " << s1_result[i] << endl;
+    // }
 
     // Test S2
-    calculate_s2<<<3,36>>>(d_db, d_fp, d_result, d_s);
-    cudaMemcpy(s, d_s, 3*36*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&s2_result[0], d_result, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cout << "\n\nS2\n";
-    for (int i=0 ; i<108 ; i++) {
-        cout << i << " " << s[i] << endl;
-    }
-    for (int i=0 ; i<3 ; i++) {
-        cout << i << " : ID " << db[i].id << endl;
-        cout << "result = " << s2_result[i] << endl;
-    }
+    calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    cudaMemcpy(&s2_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    // cout << "\n\nS2\n";
+    // for (int i=0 ; i<count_db ; i++) {
+    //     cout << i << " : ID " << db[i].id << endl;
+    //     cout << "result = " << s2_result[i] << endl;
+    // }
 
     // Test S3
-    calculate_s3<<<3,1>>>(d_db, d_fp, d_result);
-    cudaMemcpy(&s3_result[0], d_result, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cout << "\n\nS3\n";
-    for (int i=0 ; i<3 ; i++) {
-        cout << i << " : ID " << db[i].id << endl;
-        cout << "result = " << s3_result[i] << endl;
-    }
+    calculate_s3<<<count_db,1>>>(d_db, d_fp, d_result);
+    cudaMemcpy(&s3_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    // cout << "\n\nS3\n";
+    // for (int i=0 ; i<count_db ; i++) {
+    //     cout << i << " : ID " << db[i].id << endl;
+    //     cout << "result = " << s3_result[i] << endl;
+    // }
 
     // Test S4
-    calculate_s4<<<3,1>>>(d_db, d_fp, d_result);
-    cudaMemcpy(&s4_result[0], d_result, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cout << "\n\nS4\n";
-    for (int i=0 ; i<3 ; i++) {
-        cout << i << " : ID " << db[i].id << endl;
-        cout << "result = " << s4_result[i] << endl;
-    }
+    calculate_s4<<<count_db,1>>>(d_db, d_fp, d_result);
+    cudaMemcpy(&s4_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    // cout << "\n\nS4\n";
+    // for (int i=0 ; i<count_db ; i++) {
+    //     cout << i << " : ID " << db[i].id << endl;
+    //     cout << "result = " << s4_result[i] << endl;
+    // }
 
     // Test S
     // Copy S1-S4 to device
     float *d_s1_result, *d_s2_result, *d_s3_result, *d_s4_result;
-    cudaMalloc((void **)&d_s1_result, 3*sizeof(float));
-    cudaMalloc((void **)&d_s2_result, 3*sizeof(float));
-    cudaMalloc((void **)&d_s3_result, 3*sizeof(float));
-    cudaMalloc((void **)&d_s4_result, 3*sizeof(float));
-    cudaMemcpy(d_s1_result, &s1_result[0], 3*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_s2_result, &s2_result[0], 3*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_s3_result, &s3_result[0], 3*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_s4_result, &s4_result[0], 3*sizeof(float), cudaMemcpyHostToDevice);
-    calculate_s<<<1,3>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
-    cudaMemcpy(&result[0], d_result, 3*sizeof(float), cudaMemcpyDeviceToHost);
-    cout << "\n\nS4\n";
-    for (int i=0 ; i<3 ; i++) {
+    cudaMalloc((void **)&d_s1_result, count_db*sizeof(float));
+    cudaMalloc((void **)&d_s2_result, count_db*sizeof(float));
+    cudaMalloc((void **)&d_s3_result, count_db*sizeof(float));
+    cudaMalloc((void **)&d_s4_result, count_db*sizeof(float));
+    cudaMemcpy(d_s1_result, &s1_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_s2_result, &s2_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_s3_result, &s3_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_s4_result, &s4_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
+    calculate_s<<<1,count_db>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
+    cudaMemcpy(&result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    cout << "\n\nS\n";
+    for (int i=0 ; i<count_db ; i++) {
         cout << i << " : ID " << db[i].id << endl;
         cout << "result = " << result[i] << endl;
     }
-
-    /*cudaMemcpy(&r, d_db, 3*sizeof(fingerprint), cudaMemcpyDeviceToHost);
-    for (int j=0 ; j<3 ; j++) {
-        cout << "\n\nFingerprint " << j << endl;
-        for (int i=0 ; i<36 ; i++) {
-            cout << dbyte_to_frequency(dfrequency_to_byte(dbyte_to_frequency(db[j].local_frequency[i])+0.1)) << " " << dbyte_to_frequency(r[j].local_frequency[i]) << endl;
-        }
-    }*/
-
+    auto timer_end = chrono::steady_clock::now();
+    chrono::duration<double> diff = timer_end - timer_start;
+    cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
     return 0;
 }
 
-// nvcc -o parallel_indexing parallel_indexing.cu fingerprint_structure.cpp
+// nvcc -o parallel_indexing parallel_indexing.cu fingerprint_structure.cpp -std=c++11

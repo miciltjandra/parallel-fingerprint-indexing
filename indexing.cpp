@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 #include "fingerprint_structure.hpp"
 using namespace std;
 
@@ -20,17 +21,11 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
         float d = local_orie_1[i] - local_orie_2[i];
 
         d = d * M_PI/180.0f * 2;
-        cout << i << " " << s*sin(d) << endl;
 
         sum1 += (s * cos(d));
         sum2 += (s * sin(d));
         sum3 += s;
     }
-    cout << endl;
-    cout << "ss = " << sum3 << endl;
-    cout << "scos = " << sum1 << endl;
-    cout << "ssin = " << sum2 << endl;
-    
     float result = sqrt(pow(sum1,2)+pow(sum2,2))/sum3;
 
     return result;
@@ -41,7 +36,6 @@ float calculate_s2(const vector<float> &local_freq_1, const vector<float> &local
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
         sum1 += abs(local_freq_1[i]-local_freq_2[i]);
         sum2 += local_freq_1[i]+local_freq_2[i];
-        cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << endl;
     }
     float result = 1 - (sum1/sum2);
     return result;
@@ -84,32 +78,20 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         // Last core for a fingerprint
         if (i<n-1 && (db[i+1].id%5 == 1)) {
-            cerr << "Best core idx : " << best_core_idx << "-" << db[best_core_idx].id << " " << best_core_s1 <<  endl;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
-            if (i==4) cerr << "\n\n\nDB LOCAL FREQ\n";
-            for (int j=0 ; j<db_local_freq.size() ; j++) {
-                if (i==4) cerr << db_local_freq[j] << " ";
-            }
-            if (i==4) cerr << "\n\n\n";
+
             float db_avg_o = get_fingerprint_average_orientation(db[best_core_idx]);
             float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
 
             float s2 = calculate_s2(fp_local_freq, db_local_freq);
 
-            cout << "s2 " << s2 << endl;
-
             float s3 = calculate_s3(fp_avg_freq, db_avg_f);
-
-            cout << "s3 " << s3 << endl;
 
             float s4 = calculate_s4(fp_avg_orie, db_avg_o);
 
-            cout << "s4 " << s4 << endl;
-
             float s = calculate_s(best_core_s1,s2,s3,s4);
 
-            cout << "s " << s << endl;
             results.push_back(make_pair(s, db[best_core_idx].id));
             best_core_idx = i+1;
             best_core_s1 = 0;
@@ -130,172 +112,70 @@ int main(int argc, char** argv) {
     // Read the fingerprint to be searched
     vector<struct fingerprint> fp;
     int count_fp = read_from_file(fp, fp_filename);
-    cerr << count_fp << endl;
 
+    // Read the database
+    vector<struct fingerprint> db;
+    int count_db = read_from_file(db, db_filename);
+    cerr << "Fingerprint database count : " << count_db << endl;
+
+    // Start timer
+    auto timer_start = chrono::steady_clock::now();
+
+    // Read fingerprint FP value to local vectors
     vector<float> local_orie, local_cohe, local_freq;
     get_fingerprint_local_values(fp[0], local_orie, local_cohe, local_freq);
     float avg_o = get_fingerprint_average_orientation(fp[0]);
     float avg_f = get_fingerprint_average_frequency(fp[0]);
 
-    // Read the database
-    vector<struct fingerprint> db;
-    int count_db = read_from_file(db, db_filename);
-    cerr << count_db << endl;
-
     // Vector for sorting s value
     vector< pair<float, int> > best_matches;
 
+    // This is code for checking every core and assume every core is from different fingerprint
     for (int i=0 ; i<count_db ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
+        // cout << "DB fingerprint ID " << db[i].id << endl;
         vector<float> db_local_orie, db_local_cohe, db_local_freq;
         get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
-        if (i==0) cerr << "\n\n\n LOCAL FREQ\n";
-        for (int j=0 ; j<db_local_freq.size() ; j++) {
-            if (i==0) cerr << db_local_freq[j] << " ";
-        }
-        if (i==0) cerr << "\n\n\n";
+
         float db_avg_o = get_fingerprint_average_orientation(db[i]);
         float db_avg_f = get_fingerprint_average_frequency(db[i]);
 
         float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
 
-        cout << "s1 " << s1 << endl;
-
         float s2 = calculate_s2(local_freq, db_local_freq);
-
-        cout << "s2 " << s2 << endl;
 
         float s3 = calculate_s3(avg_f, db_avg_f);
 
-        cout << "s3 " << s3 << endl;
-
         float s4 = calculate_s4(avg_o, db_avg_o);
-
-        cout << "s4 " << s4 << endl;
 
         float s = calculate_s(s1,s2,s3,s4);
 
-        cout << "s " << s << endl;
         best_matches.push_back(make_pair(s, db[i].id));
     }
-    // sort(best_matches.rbegin(), best_matches.rend());
+    sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest matches\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+(best_matches[i].second%5!=0) <<"\t: " << best_matches[i].first << endl;
     }
 
-    // vector< pair<float, int> > best_match;
-    // get_top_fingerprints(fp[0], db, best_match);
-    // sort(best_match.rbegin(), best_match.rend());
-    // cout << "\nBest match\n";
-    // for (int i=0 ; i<best_match.size() ; i++) {
-    //     cout << "ID " << best_match[i].second << "-"<< best_match[i].second/5+1 <<"\t: " << best_match[i].first << endl;
-    // }
+    auto timer_end = chrono::steady_clock::now();
+    chrono::duration<double> diff = timer_end - timer_start;
+    cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
 
-    cout << "\n\nDebugging S1\n\n";
-
-    for (int i=0 ; i<3 ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
-        vector<float> db_local_orie, db_local_cohe, db_local_freq;
-        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
-
-        float s1 = calculate_s1(local_orie, local_cohe, db_local_orie, db_local_cohe);
-
-        cout << "s1 " << s1 << endl;
+   /*
+    // This is code for checking that fingerprint may have more than 1 core
+    // Core used is the one with best S1 value
+    auto timer_start = chrono::steady_clock::now();
+    get_top_fingerprints(fp[0], db, best_matches);
+    sort(best_matches.rbegin(), best_matches.rend());
+    cout << "\nBest match\n";
+    for (int i=0 ; i<best_match.size() ; i++) {
+        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+1 <<"\t: " << best_matches[i].first << endl;
     }
-
-    cout << "\n\nDebugging S2\n\n";
-    for (int i=0 ; i<3 ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
-        vector<float> db_local_orie, db_local_cohe, db_local_freq;
-        get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
-
-        float s2 = calculate_s2(local_freq, db_local_freq);
-
-        cout << "s2 " << s2 << endl;
-    }
-
-    cout << "\n\nDebugging S3\n\n";
-    for (int i=0 ; i<3 ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
-        float db_avg_o = get_fingerprint_average_orientation(db[i]);
-        float db_avg_f = get_fingerprint_average_frequency(db[i]);
-
-        float s3 = calculate_s3(avg_f, db_avg_f);
-
-        cout << "s3 " << s3 << endl;
-    }
-    
-    cout << "\n\nDebugging S4\n\n";
-    for (int i=0 ; i<3 ; i++) {
-        cout << "DB fingerprint ID " << db[i].id << endl;
-        float db_avg_o = get_fingerprint_average_orientation(db[i]);
-        float db_avg_f = get_fingerprint_average_frequency(db[i]);
-
-        float s4 = calculate_s4(avg_o, db_avg_o);
-
-        cout << "s4 " << s4 << endl;
-    }
-
+    auto timer_end = chrono::steady_clock::now();
+    chrono::duration<double> diff = timer_end - timer_start;
+    cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+    */
     return 0;
 }
 
-/*int main() {
-    // Example values
-    // fp.tif CORE 104 152
-    float l_orie_1[] = {0, 97.7305, 96.0037, 104.154, 104.27, 99.6121, 76.1126, 0, 0, 98.8438, 94.4882, 97.5149, 90.0553, 74.8645, 60.5941, 53.0763, 0, 0, 90.7041, 87.4423, 77.35, 64.5631, 57.3232, 0, 0, 86.3477, 77.309, 65.6758, 58.5865, 55.7453, 0, 0, 73.9436, 65.2782, 62.7022, 80.4487};
-    float l_cohe_1[] = {0, 0.856395, 0.656309, 0.29507, 0.812482, 0.945255, 0.739501, 0, 0, 0.612811, 0.707421, 0.38111, 0.801206, 0.914547, 0.626329, 0.580194, 0, 0, 0.504631, 0.468045, 0.737631, 0.739284, 0.523021, 0, 0, 0.385378, 0.719162, 0.500714, 0.693436, 0.54261, 0, 0, 0.559602, 0.322596, 0.609416, 0.641271};
-    float l_freq_1[] = {0, 0.181545, 0.259259, 0.16, 0.157895, 0.125, 0.222222, 0, 0, 0.183776, 0.272727, 0.15, 0.173913, 0.0555556, 0.285714, 0.142857, 0, 0, 0.158353, 0.0714286, 0.173913, 0.125, 0.1, 0, 0, 0.148289, 0.133333, 0.147289, 0.142857, 0.138313, 0, 0, 0.136441, 0.134879, 0.04, 0.110869};
-    float avg_orie_1 = -0.125954;
-    float avg_freq_1 = 0.142895;
-
-    //fp.tif CORE 104 168
-    float l_orie_2[] = {0, 98.8438, 94.4882, 97.5149, 90.0553, 74.8645, 60.5941, 0, 0, 0, 90.7041, 87.4423, 77.35, 64.5631, 57.3232, 53.6184, 0, 0, 86.3477, 77.309, 65.6758, 58.5865, 55.7453, 0, 0, 0, 73.9436, 65.2782, 62.7022, 62.2227, 0, 0, 80.4487, 70.5397, 68.9653, 0};
-    float l_cohe_2[] = {0, 0.612811, 0.707421, 0.38111, 0.801206, 0.914547, 0.626329, 0, 0, 0, 0.504631, 0.468045, 0.737631, 0.739284, 0.523021, 0.554236, 0, 0, 0.385378, 0.719162, 0.500714, 0.693436, 0.54261, 0, 0, 0, 0.559602, 0.322596, 0.609416, 0.525523, 0, 0, 0.641271, 0.686779, 0.508802, 0};
-    float l_freq_2[] = {0, 0.183776, 0.272727, 0.15, 0.173913, 0.0555556, 0.285714, 0, 0, 0, 0.158353, 0.0714286, 0.173913, 0.125, 0.1, 0.14295, 0, 0, 0.148289, 0.133333, 0.147289, 0.142857, 0.138313, 0, 0, 0, 0.136441, 0.134879, 0.04, 0.130762, 0, 0, 0.110869, 0.110092, 0.109249, 0};
-    float avg_orie_2 = -0.125954;
-    float avg_freq_2 = 0.142895;
-
-    //fp2.tif CORE 104 136
-    float l_orie_3[] = {92.8416, 82.703, 75.2967, 65.567, 59.879, 56.9597, 147.818, 0, 0, 78.7643, 70.4503, 63.0479, 59.4192, 58.2259, 60.4374, 69.9172, 0, 83.8517, 76.6113, 69.5137, 67.4031, 70.097, 74.9326, 0, 0, 89.5193, 81.9179, 80.0141, 86.7053, 93.444, 0, 0, 102.074, 100.163, 105.52, 0};
-    float l_cohe_3[] = {0.556538, 0.511061, 0.570864, 0.42559, 0.713579, 0.648699, 0.62761, 0, 0, 0.591479, 0.520984, 0.505018, 0.758203, 0.895867, 0.716803, 0.40558, 0, 0.549759, 0.411015, 0.575119, 0.615031, 0.722703, 0.544702, 0, 0, 0.46137, 0.496499, 0.670199, 0.751085, 0.416534, 0, 0, 0.55776, 0.496624, 0.600075, 0};
-    float l_freq_3[] = {0.141691, 0.139967, 0.0833333, 0.143637, 0.111111, 0.25, 0.153846, 0, 0, 0.142564, 0.0833333, 0.111111, 0.140395, 0.0909091, 0.0869565, 0.13509, 0, 0.125677, 0.130276, 0.130836, 0.131476, 0.111111, 0.117647, 0, 0, 0.111715, 0.115348, 0.117691, 0.119609, 0.125048, 0, 0, 0.101149, 0.101822, 0.102356, 0};
-    float avg_orie_3 = 1.22509;
-    float avg_freq_3 = 0.130515;
-
-    vector<float>orie_1(l_orie_1, l_orie_1 + ARRAY_SIZE);
-    vector<float>cohe_1(l_cohe_1, l_cohe_1 + ARRAY_SIZE);
-    vector<float>freq_1(l_freq_1, l_freq_1 + ARRAY_SIZE);
-
-    vector<float>orie_2(l_orie_2, l_orie_2 + ARRAY_SIZE);
-    vector<float>cohe_2(l_cohe_2, l_cohe_2 + ARRAY_SIZE);
-    vector<float>freq_2(l_freq_2, l_freq_2 + ARRAY_SIZE);
-
-    vector<float>orie_3(l_orie_3, l_orie_3 + ARRAY_SIZE);
-    vector<float>cohe_3(l_cohe_3, l_cohe_3 + ARRAY_SIZE);
-    vector<float>freq_3(l_freq_3, l_freq_3 + ARRAY_SIZE);
-
-    float s1 = calculate_s1(orie_1, cohe_1, orie_3, cohe_3);
-
-    cout << "s1 " << s1 << endl;
-
-    float s2 = calculate_s2(freq_1, freq_3);
-
-    cout << "s2 " << s2 << endl;
-
-    float s3 = calculate_s3(avg_freq_1, avg_freq_3);
-
-    cout << "s3 " << s3 << endl;
-
-    float s4 = calculate_s4(avg_orie_1, avg_orie_3);
-
-    cout << "s4 " << s4 << endl;
-
-    float s = calculate_s(s1,s2,s3,s4);
-
-    cout << "s " << s << endl;
-
-    return 0;
-}*/
-
-// g++ -o indexing indexing.cpp fingerprint_structure.cpp
+// g++ -o indexing indexing.cpp fingerprint_structure.cpp -std=c++11
