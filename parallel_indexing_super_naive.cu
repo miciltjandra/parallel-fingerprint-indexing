@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
 #include <chrono>
 #include "fingerprint_structure.hpp"
 using namespace std;
@@ -47,7 +48,7 @@ __device__ float dbyte_to_orientation(unsigned char c) {
     return result;
 }
 
-__global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
+__global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
     __shared__ float ss, scos, ssin;
     int j = blockIdx.x;
     int i = threadIdx.x;
@@ -70,6 +71,20 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
     __syncthreads();
     if (i == 0) {
         result[j] = sqrt(pow(scos,2)+pow(ssin,2))/ss;
+    }
+    __syncthreads();
+    // First core of a fingerprint check maximum from all core
+    if ((db+j)->id%5 == 1) {
+        int max_idx = j;
+        for (int i=1 ; i<5 ; i++) {
+            if ((db+j+1)->id%5 == 1) break;
+            else {
+                if (result[j+i] > result[max_idx]) {
+                    max_idx = j+i;
+                }
+            }
+        }
+        mapping[((db+j)->id-1)/5] = max_idx;
     }
 }
 
@@ -100,9 +115,11 @@ __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result) {
 __global__ void calculate_s(float* s1, float* s2, float*s3, float* s4, float* result) {
     int i = threadIdx.x;
     result[i] = w1*s1[i] + w2*s2[i] + w3*s3[i] + w4*s4[i];
-    if (i%5 == 1) {
+}
 
-    }
+__global__ void get_top_fingerprints(float* s, float* result, int* mapping) {
+    int i = threadIdx.x;
+    result[i] = s[mapping[i]];
 }
 
 int main(int argc, char** argv) {
@@ -139,19 +156,33 @@ int main(int argc, char** argv) {
     float s1_result[count_db], s2_result[count_db], s3_result[count_db], s4_result[count_db];
     float result[count_db];
     float *d_result;
+
     cudaMalloc((void **)&d_fp, sizeof(fingerprint));
     cudaMalloc((void **)&d_db, count_db*sizeof(fingerprint));
     cudaMalloc((void **)&d_result, count_db*sizeof(float));
 
+    //Mapping for block idx to fingerprint core idx
+    int *d_mapping;
+    cudaMalloc((void **)&d_mapping, count_db_fingerprint*sizeof(int));
+
     cudaMemcpy(d_db, &db[0], count_db*sizeof(fingerprint), cudaMemcpyHostToDevice);
     cudaMemcpy(d_fp, &fp[0], sizeof(fingerprint), cudaMemcpyHostToDevice);
-    calculate_s1<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    calculate_s1<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result, d_mapping);
     cudaMemcpy(&s1_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+
+    int mapping[count_db_fingerprint];
+    cudaMemcpy(&mapping[0], d_mapping, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
 
     // for (int i=0 ; i<count_db ; i++) {
     //     cout << i << " : ID " << db[i].id << endl;
     //     cout << "result = " << s1_result[i] << endl;
     // }
+
+    // Check mapping
+    cout << "MAPPING\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << i << " " << mapping[i] << endl;
+    }
 
     // Test S2
     calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
@@ -197,6 +228,22 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<count_db ; i++) {
         cout << i << " : ID " << db[i].id << endl;
         cout << "result = " << result[i] << endl;
+    }
+
+    float *d_final_result;
+    cudaMalloc((void **)&d_final_result, count_db_fingerprint*sizeof(float));
+    get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
+    cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
+    cout << "\n\nFinal Result\n";
+    vector< pair<float, int> > best_matches;
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << "result = " << result[i] << endl;
+        best_matches.push_back(make_pair(result[i], mapping[i]));
+    }
+    sort(best_matches.rbegin(), best_matches.rend());
+    cout << "\nBest match\n";
+    for (int i=0 ; i<best_matches.size() ; i++) {
+        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+1 <<"\t: " << best_matches[i].first << endl;
     }
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
