@@ -102,9 +102,28 @@ __global__ void calculate_s2(fingerprint* db, fingerprint* fp, float* result) {
     }
 }
 
+__global__ void calculate_s2_with_mapping(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
+    __shared__ float s_addition, s_absdiff;
+    int j = mapping[blockIdx.x];
+    int i = threadIdx.x;
+    // int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    float t_addition = dbyte_to_frequency(fp->local_frequency[i]) + dbyte_to_frequency((db+j)->local_frequency[i]);
+    float t_absdiff = abs(dbyte_to_frequency(fp->local_frequency[i]) - dbyte_to_frequency((db+j)->local_frequency[i]));
+    atomicAdd(&s_addition, t_addition);
+    atomicAdd(&s_absdiff, t_absdiff);
+    if (i == 0) {
+        result[blockIdx.x] = 1 - (s_absdiff/s_addition);
+    }
+}
+
 __global__ void calculate_s3(fingerprint* db, fingerprint* fp, float* result) {
     int j = blockIdx.x;
     result[j] = 1 - (abs(dbyte_to_frequency(fp->avg_frequency)-dbyte_to_frequency((db+j)->avg_frequency))/max(dbyte_to_frequency(fp->avg_frequency), dbyte_to_frequency((db+j)->avg_frequency)));
+}
+
+__global__ void calculate_s3_with_mapping(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
+    int j = mapping[blockIdx.x];
+    result[blockIdx.x] = 1 - (abs(dbyte_to_frequency(fp->avg_frequency)-dbyte_to_frequency((db+j)->avg_frequency))/max(dbyte_to_frequency(fp->avg_frequency), dbyte_to_frequency((db+j)->avg_frequency)));
 }
 
 __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result) {
@@ -112,9 +131,19 @@ __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result) {
     result[j] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/M_PI);
 }
 
+__global__ void calculate_s4_with_mapping(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
+    int j = mapping[blockIdx.x];
+    result[blockIdx.x] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/M_PI);
+}
+
 __global__ void calculate_s(float* s1, float* s2, float*s3, float* s4, float* result) {
     int i = threadIdx.x;
     result[i] = w1*s1[i] + w2*s2[i] + w3*s3[i] + w4*s4[i];
+}
+
+__global__ void calculate_s_with_mapping(float* s1, float* s2, float*s3, float* s4, float* result, int* mapping) {
+    int i = threadIdx.x;
+    result[i] = w1*s1[mapping[i]] + w2*s2[i] + w3*s3[i] + w4*s4[i];
 }
 
 __global__ void get_top_fingerprints(float* s, float* result, int* mapping) {
@@ -185,7 +214,9 @@ int main(int argc, char** argv) {
     }
 
     // Test S2
-    calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    // Only calculate for 1 core per fingerprint
+    // calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    calculate_s2_with_mapping<<<count_db_fingerprint,BLOCKSIZE>>>(d_db, d_fp, d_result, d_mapping);
     cudaMemcpy(&s2_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     // cout << "\n\nS2\n";
     // for (int i=0 ; i<count_db ; i++) {
@@ -194,7 +225,8 @@ int main(int argc, char** argv) {
     // }
 
     // Test S3
-    calculate_s3<<<count_db,1>>>(d_db, d_fp, d_result);
+    // calculate_s3<<<count_db,1>>>(d_db, d_fp, d_result);
+    calculate_s3_with_mapping<<<count_db_fingerprint,1>>>(d_db, d_fp, d_result,d_mapping);
     cudaMemcpy(&s3_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     // cout << "\n\nS3\n";
     // for (int i=0 ; i<count_db ; i++) {
@@ -203,7 +235,8 @@ int main(int argc, char** argv) {
     // }
 
     // Test S4
-    calculate_s4<<<count_db,1>>>(d_db, d_fp, d_result);
+    // calculate_s4<<<count_db,1>>>(d_db, d_fp, d_result);
+    calculate_s4_with_mapping<<<count_db_fingerprint,1>>>(d_db, d_fp, d_result, d_mapping);
     cudaMemcpy(&s4_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     // cout << "\n\nS4\n";
     // for (int i=0 ; i<count_db ; i++) {
@@ -222,10 +255,12 @@ int main(int argc, char** argv) {
     cudaMemcpy(d_s2_result, &s2_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_s3_result, &s3_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_s4_result, &s4_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
-    calculate_s<<<1,count_db>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
+    // calculate_s<<<1,count_db>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
+    calculate_s_with_mapping<<<1,count_db_fingerprint>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result, d_mapping);
     cudaMemcpy(&result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     cout << "\n\nS\n";
-    for (int i=0 ; i<count_db ; i++) {
+    // for (int i=0 ; i<count_db ; i++) {
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << i << " : ID " << db[i].id << endl;
         cout << "result = " << result[i] << endl;
     }
@@ -238,16 +273,43 @@ int main(int argc, char** argv) {
     vector< pair<float, int> > best_matches;
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << "result = " << result[i] << endl;
-        best_matches.push_back(make_pair(result[i], mapping[i]));
+        best_matches.push_back(make_pair(result[i], db[mapping[i]].id));
     }
     sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest match\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
-        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+1 <<"\t: " << best_matches[i].first << endl;
+        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first << endl;
     }
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+
+    // DEBUG
+    cout << "\nS1\n";
+    for (int i=0 ; i<count_db ; i++) {
+        cout << s1_result[i] << endl;
+    }
+
+    cout << "\nS2\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << s2_result[i] << endl;
+    }
+
+    cout << "\nS3\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << s3_result[i] << endl;
+    }
+
+    cout << "\nS4\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << s4_result[i] << endl;
+    }
+
+    cout << "\nS\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << result[i] << endl;
+    }
+
     return 0;
 }
 

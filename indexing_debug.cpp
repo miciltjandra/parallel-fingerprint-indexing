@@ -14,6 +14,8 @@ const float w2 = 0.37f;
 const float w3 = 0.16f;
 const float w4 = 0.31f;
 
+vector<float> res_s1, res_s2, res_s3, res_s4, res_s;
+
 float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local_coherence_1, const vector<float> &local_orie_2, const vector<float> &local_coherence_2) {
     float sum1 = 0.0f, sum2 = 0.0f, sum3 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
@@ -71,6 +73,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
         get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, stub);
 
         float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
+        res_s1.push_back(s1);
         if (s1 > best_core_s1) {
             best_core_idx = i;
             best_core_s1 = s1;
@@ -86,12 +89,17 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
             float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
 
             float s2 = calculate_s2(fp_local_freq, db_local_freq);
+            res_s2.push_back(s2);
 
             float s3 = calculate_s3(fp_avg_freq, db_avg_f);
+            res_s3.push_back(s3);
 
             float s4 = calculate_s4(fp_avg_orie, db_avg_o);
+            res_s4.push_back(s4);
 
             float s = calculate_s(best_core_s1,s2,s3,s4);
+            res_s.push_back(s);
+            
 
             results.push_back(make_pair(s, db[best_core_idx].id));
             best_core_idx = i+1;
@@ -175,6 +183,32 @@ int main(int argc, char** argv) {
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+
+    // DEBUG
+    cout << "\nS1\n";
+    for (int i=0 ; i<res_s1.size() ; i++) {
+        cout << res_s1[i] << endl;
+    }
+
+    cout << "\nS2\n";
+    for (int i=0 ; i<res_s2.size() ; i++) {
+        cout << res_s2[i] << endl;
+    }
+
+    cout << "\nS3\n";
+    for (int i=0 ; i<res_s3.size() ; i++) {
+        cout << res_s3[i] << endl;
+    }
+
+    cout << "\nS4\n";
+    for (int i=0 ; i<res_s4.size() ; i++) {
+        cout << res_s4[i] << endl;
+    }
+
+    cout << "\nS\n";
+    for (int i=0 ; i<res_s.size() ; i++) {
+        cout << res_s[i] << endl;
+    }
     
     return 0;
 }
