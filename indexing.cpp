@@ -77,7 +77,8 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
         }
 
         // Last core for a fingerprint
-        if (i<n-1 && (db[i+1].id%5 == 1)) {
+        if (i==n-1 || (db[i+1].id%5 == 1)) {
+            cout << "Best core " << best_core_idx << endl;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
 
@@ -131,7 +132,7 @@ int main(int argc, char** argv) {
     vector< pair<float, int> > best_matches;
 
     // This is code for checking every core and assume every core is from different fingerprint
-    for (int i=0 ; i<count_db ; i++) {
+    /*for (int i=0 ; i<count_db ; i++) {
         // cout << "DB fingerprint ID " << db[i].id << endl;
         vector<float> db_local_orie, db_local_cohe, db_local_freq;
         get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, db_local_freq);
@@ -160,21 +161,20 @@ int main(int argc, char** argv) {
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
-
-   /*
+    */
+   
     // This is code for checking that fingerprint may have more than 1 core
     // Core used is the one with best S1 value
-    auto timer_start = chrono::steady_clock::now();
     get_top_fingerprints(fp[0], db, best_matches);
     sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest match\n";
-    for (int i=0 ; i<best_match.size() ; i++) {
+    for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5+1 <<"\t: " << best_matches[i].first << endl;
     }
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
-    */
+    
     return 0;
 }
 
