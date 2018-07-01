@@ -14,7 +14,7 @@ const float w2 = 0.37f;
 const float w3 = 0.16f;
 const float w4 = 0.31f;
 
-vector<float> res_s1, res_s2, res_s3, res_s4, res_s;
+vector<float> res_s1, res_s2, res_s3, res_s4, res_s, ress_s1;
 
 float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local_coherence_1, const vector<float> &local_orie_2, const vector<float> &local_coherence_2) {
     float sum1 = 0.0f, sum2 = 0.0f, sum3 = 0.0f;
@@ -87,6 +87,8 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
             float db_avg_o = get_fingerprint_average_orientation(db[best_core_idx]);
             float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
+
+            ress_s1.push_back(best_core_s1);
 
             float s2 = calculate_s2(fp_local_freq, db_local_freq);
             res_s2.push_back(s2);
@@ -188,6 +190,11 @@ int main(int argc, char** argv) {
     cout << "\nS1\n";
     for (int i=0 ; i<res_s1.size() ; i++) {
         cout << res_s1[i] << endl;
+    }
+
+    cout << "\nS1\n";
+    for (int i=0 ; i<ress_s1.size() ; i++) {
+        cout << ress_s1[i] << endl;
     }
 
     cout << "\nS2\n";

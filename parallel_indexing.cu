@@ -74,7 +74,7 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result, in
     }
     __syncthreads();
     // First core of a fingerprint check maximum from all core
-    if ((db+j)->id%5 == 1) {
+    if (i == 0 && (db+j)->id%5 == 1) {
         int max_idx = j;
         for (int i=1 ; i<5 ; i++) {
             if ((db+j+1)->id%5 == 1) break;
@@ -200,6 +200,7 @@ int main(int argc, char** argv) {
     cudaMemcpy(&s1_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
 
     int mapping[count_db_fingerprint];
+    memset(mapping, 0, sizeof(mapping));
     cudaMemcpy(&mapping[0], d_mapping, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
 
     // for (int i=0 ; i<count_db ; i++) {
@@ -266,9 +267,9 @@ int main(int argc, char** argv) {
     }
 
     float *d_final_result;
-    cudaMalloc((void **)&d_final_result, count_db_fingerprint*sizeof(float));
-    get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
-    cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
+    /* This is for when not used with mapping */
+    // get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
+    // cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     cout << "\n\nFinal Result\n";
     vector< pair<float, int> > best_matches;
     for (int i=0 ; i<count_db_fingerprint ; i++) {
@@ -290,6 +291,11 @@ int main(int argc, char** argv) {
         cout << s1_result[i] << endl;
     }
 
+    cout << "\nS1\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        cout << s1_result[mapping[i]] << endl;
+    }
+
     cout << "\nS2\n";
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << s2_result[i] << endl;
@@ -309,6 +315,16 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << result[i] << endl;
     }
+
+    cudaFree(d_fp);
+    cudaFree(d_db);
+    cudaFree(d_result);
+    cudaFree(d_mapping);
+    cudaFree(d_s1_result);
+    cudaFree(d_s2_result);
+    cudaFree(d_s3_result);
+    cudaFree(d_s4_result);
+    cudaFree(d_final_result);
 
     return 0;
 }
