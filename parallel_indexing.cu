@@ -261,10 +261,10 @@ int main(int argc, char** argv) {
     cudaMemcpy(&result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     cout << "\n\nS\n";
     // for (int i=0 ; i<count_db ; i++) {
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
+    /*for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << i << " : ID " << db[i].id << endl;
         cout << "result = " << result[i] << endl;
-    }
+    }*/
 
     float *d_final_result;
     /* This is for when not used with mapping */
@@ -286,7 +286,7 @@ int main(int argc, char** argv) {
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
 
     // DEBUG
-    cout << "\nS1\n";
+    /*cout << "\nS1\n";
     for (int i=0 ; i<count_db ; i++) {
         cout << s1_result[i] << endl;
     }
@@ -314,7 +314,7 @@ int main(int argc, char** argv) {
     cout << "\nS\n";
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         cout << result[i] << endl;
-    }
+    }*/
 
     cudaFree(d_fp);
     cudaFree(d_db);
