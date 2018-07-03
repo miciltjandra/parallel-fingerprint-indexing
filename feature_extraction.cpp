@@ -73,13 +73,16 @@ void visualize_orientation(Mat orie, Mat coherence, Mat image) {
 	float r = BLOCKSIZE/2 - 2;
 	for (int i=BLOCKSIZE/2 ; i<=orie.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
 		for (int j=BLOCKSIZE/2 ; j<=orie.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-			if (orie.at<float>(i,j) != 0) {
-				int x1 = r * cos(orie.at<float>(i,j)*CV_PI/180.0f) + i;
-				int y1 = r * sin(orie.at<float>(i,j)*CV_PI/180.0f) + j;
-				int x2 = i - r*cos(orie.at<float>(i,j)*CV_PI/180.0f);
-				int y2 = j - r*sin(orie.at<float>(i,j)*CV_PI/180.0f);
+			
+			if (orie.at<float>(j,i) != 0) {
+				// cout << j << " " << i << " " << orie.at<float>(j,i) << endl; 
+				int x1 = r * cos(orie.at<float>(j,i)*CV_PI/180.0f) + i;
+				int y1 = r * sin(orie.at<float>(j,i)*CV_PI/180.0f) + j;
+				int x2 = i - r*cos(orie.at<float>(j,i)*CV_PI/180.0f);
+				int y2 = j - r*sin(orie.at<float>(j,i)*CV_PI/180.0f);
+				cout << j << " " << i << " " << orie.at<float>(j,i) << " " << x1 << " " << y1 << " " << x2 << " " << y2 << " " << endl; 
 				Point P1(x1,y1), P2(x2,y2);
-				if (coherence.at<float>(i,j) > 0.5) {
+				if (coherence.at<float>(j,i) > 0.5) {
 					line(visual, P1, P2, CV_RGB(0, 0, 255));
 				} else {
 					line(visual, P1, P2, CV_RGB(255, 0, 0));
@@ -113,8 +116,8 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 			float gx = 0.0f, gy = 0.0f, gxy = 0.0f;
 			for (int u=i-BLOCKSIZE/2 ; u<i+BLOCKSIZE/2 ; u++) {
 				for (int v=j-BLOCKSIZE/2 ; v<j+BLOCKSIZE/2 ; v++) {
-					gx = 2* grad_x.at<float>(u,v) * grad_y.at<float>(u,v);
-					gy = pow(grad_x.at<float>(u,v), 2) - pow(grad_y.at<float>(u,v), 2);
+					gx = 2* grad_x.at<float>(v,u) * grad_y.at<float>(v,u);
+					gy = pow(grad_x.at<float>(v,u), 2) - pow(grad_y.at<float>(v,u), 2);
 					vx += gx;
 					vy += gy;
 					gxy += sqrt(pow(gx,2)+pow(gy,2));
@@ -127,15 +130,17 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 			}
 
 			//The angle above is the angle perpendicular to ridge direction
-			orient_im.at<float>(i,j) = angle * 180.0f/CV_PI;
+			orient_im.at<float>(j,i) = angle * 180.0f/CV_PI;
+			cout << j << " " << i << " " << angle << endl;
+
 
 			//Coherence
 			float coh = sqrt(pow(vx,2)+pow(vy,2))/gxy;
-			coherence.at<float>(i,j) = coh;
+			coherence.at<float>(j,i) = coh;
 
 			//Low pass filter correcting
-			phi_x.at<float>(i,j) = cos(2*angle);
-			phi_y.at<float>(i,j) = sin(2*angle);
+			phi_x.at<float>(j,i) = cos(2*angle);
+			phi_y.at<float>(j,i) = sin(2*angle);
 		}
 	}
 
@@ -145,8 +150,8 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 			float sum_x = 0.0f, sum_y = 0.0f;
 			for (int u=-KERNELSIZE/2 ; u<=KERNELSIZE/2 ; u++) {
 				for (int v=-KERNELSIZE/2 ; v<=KERNELSIZE/2 ; v++) {
-					sum_x += low_pass_kernel[u+KERNELSIZE/2][v+KERNELSIZE/2] * phi_x.at<float>(i-u*BLOCKSIZE, j-v*BLOCKSIZE);
-					sum_y += low_pass_kernel[u+KERNELSIZE/2][v+KERNELSIZE/2] * phi_y.at<float>(i-u*BLOCKSIZE, j-v*BLOCKSIZE);
+					sum_x += low_pass_kernel[v+KERNELSIZE/2][u+KERNELSIZE/2] * phi_x.at<float>(j-v*BLOCKSIZE, i-u*BLOCKSIZE);
+					sum_y += low_pass_kernel[v+KERNELSIZE/2][u+KERNELSIZE/2] * phi_y.at<float>(j-v*BLOCKSIZE, i-u*BLOCKSIZE);
 					// if (i == 8 && j== 8) {
 					// 	cout << "u v : " << u << " " << v << endl;
 					// 	cout << low_pass_kernel[u+KERNELSIZE/2][v+KERNELSIZE/2] << endl;
@@ -161,7 +166,8 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 			} else {
 				corrected_angle = 0.5f * atan2(sum_y,sum_x) * 180.0f/CV_PI;
 			}
-			orient.at<float>(i,j) = corrected_angle + 90;
+			orient.at<float>(j,i) = corrected_angle + 90;
+			// cout << j << " " << i << " " << corrected_angle << endl;
 		}
 	}
 
@@ -173,9 +179,10 @@ void visualize_frequency(Mat freq, Mat image) {
 	Mat visual = image.clone();
 	for (int i=BLOCKSIZE/2 ; i<=freq.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
 		for (int j=BLOCKSIZE/2 ; j<=freq.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+			cout << j << " " << i << " " << freq.at<float>(j,i) << endl;
 			for (int u=i-BLOCKSIZE/2 ; u<i+BLOCKSIZE/2 ; u++) {
 				for (int v=j-BLOCKSIZE/2 ; v<j+BLOCKSIZE/2 ; v++) {
-					visual.at<uchar>(u,v) = 255 - (freq.at<float>(i,j)/(1.0f/3) * 255);
+					visual.at<uchar>(v,u) = 255 - (freq.at<float>(j,i)/(1.0f/3) * 255);
 				}
 			}
 		}
@@ -239,8 +246,8 @@ Mat interpolate_frequency(Mat freq, Mat mask) {
 		valid = true;
 		for (int i=BLOCKSIZE/2 ; i<=initial.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
 			for (int j=BLOCKSIZE/2 ; j<=initial.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-				if (freq.at<float>(i,j) != -1) {
-					result.at<float>(i,j) = freq.at<float>(i,j);
+				if (freq.at<float>(j,i) != -1) {
+					result.at<float>(j,i) = freq.at<float>(j,i);
 				} else {
 					// Interpolation
 					float sum_1 = 0.0f, sum_2 = 0.0f;
@@ -249,22 +256,22 @@ Mat interpolate_frequency(Mat freq, Mat mask) {
 							int w = i-u*BLOCKSIZE;
 							int x = j-v*BLOCKSIZE;
 							float miu_freq, sigma_freq;
-							if (w < 0 || w >= freq.cols || x < 0 || x >= freq.cols) {
+							if (w < 0 || w >= freq.cols || x < 0 || x >= freq.rows) {
 								miu_freq = 0;
 								sigma_freq = 0;
 							} else {
-								miu_freq = miu(freq.at<float>(i-u*BLOCKSIZE, j-v*BLOCKSIZE));
-								sigma_freq = sigma(freq.at<float>(i-u*BLOCKSIZE, j-v*BLOCKSIZE)+1);
+								miu_freq = miu(freq.at<float>(j-v*BLOCKSIZE, i-u*BLOCKSIZE));
+								sigma_freq = sigma(freq.at<float>(j-v*BLOCKSIZE, i-u*BLOCKSIZE)+1);
 							}
-							sum_1 += gaussian_kernel[u+GAUSSKERNELSIZE/2][v+GAUSSKERNELSIZE/2]*miu_freq;
-							sum_2 += gaussian_kernel[u+GAUSSKERNELSIZE/2][v+GAUSSKERNELSIZE/2]*sigma_freq;
+							sum_1 += gaussian_kernel[v+GAUSSKERNELSIZE/2][u+GAUSSKERNELSIZE/2]*miu_freq;
+							sum_2 += gaussian_kernel[v+GAUSSKERNELSIZE/2][u+GAUSSKERNELSIZE/2]*sigma_freq;
 						}
 					}
 					if (sum_2 != 0) {
-						result.at<float>(i,j) = sum_1/sum_2;
+						result.at<float>(j,i) = sum_1/sum_2;
 					} else {
-						result.at<float>(i,j) = -1;
-						if (mask.at<float>(i,j) == 1 && num_interpolation < max_interpolation) {
+						result.at<float>(j,i) = -1;
+						if (mask.at<float>(j,i) == 1 && num_interpolation < max_interpolation) {
 							valid = false;
 							// cout << i << " " << j << endl;
 							// cout << sum_1 << " " << sum_2 << endl;
@@ -282,17 +289,17 @@ Mat calculate_frequency(Mat image, Mat orie, Mat mask) {
 	cout << "\n--- FREQUENCY ---" << endl;
 	Mat freq = Mat::zeros(image.size(), image.type());
 	
-	for (int i=BLOCKSIZE/2 ; i<=image.rows-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
-		for (int j=BLOCKSIZE/2 ; j<=image.cols-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+	for (int i=BLOCKSIZE/2 ; i<=image.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
+		for (int j=BLOCKSIZE/2 ; j<=image.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
 			float x_sign[2*BLOCKSIZE];
 			for (int k=0 ; k<2*BLOCKSIZE ; k++) {
 				float sigma = 0.0f;
 
 				for (int d=0 ; d<BLOCKSIZE ; d++) {
-					float cos_o = cos(orie.at<float>(i,j)*CV_PI/180.0f);
-					float sin_o = sin(orie.at<float>(i,j)*CV_PI/180.0f);					
-					int u = i + (d-BLOCKSIZE/2)*cos_o + (k-BLOCKSIZE)*sin_o;
-					int v = j + (d-BLOCKSIZE/2)*sin_o + (BLOCKSIZE-k)*cos_o;
+					float cos_o = cos(orie.at<float>(j,i)*CV_PI/180.0f);
+					float sin_o = sin(orie.at<float>(j,i)*CV_PI/180.0f);					
+					int u = j + (d-BLOCKSIZE/2)*cos_o + (k-BLOCKSIZE)*sin_o;
+					int v = i + (d-BLOCKSIZE/2)*sin_o + (BLOCKSIZE-k)*cos_o;
 					// if (i == testx && j == testy) cout << "u : " << u << " v : " << v << " : " << image.at<float>(u,v) << endl;
 					sigma += image.at<float>(u,v);
 				}
@@ -307,11 +314,11 @@ Mat calculate_frequency(Mat image, Mat orie, Mat mask) {
 
 			/* Visualizing per block */
 			// if (i == 24 && j == 232) {
-			if (i == testx && j == testy) {
-				Mat block = image(cv::Rect(i-BLOCKSIZE/2, j-BLOCKSIZE/2, BLOCKSIZE, BLOCKSIZE));
+			if (j == testx && i == testy) {
+				Mat block = image(cv::Rect(j-BLOCKSIZE/2, i-BLOCKSIZE/2, BLOCKSIZE, BLOCKSIZE));
 				imshow("Block", block);
 				float r = BLOCKSIZE/2 - 1;
-				float angle = orie.at<float>(i,j);
+				float angle = orie.at<float>(j,i);
 				int x1 = r * cos(angle*CV_PI/180.0f) + BLOCKSIZE/2;
 				int y1 = r * sin(angle*CV_PI/180.0f) + BLOCKSIZE/2;
 				int x2 = BLOCKSIZE/2 - r*cos(angle*CV_PI/180.0f);
@@ -329,28 +336,28 @@ Mat calculate_frequency(Mat image, Mat orie, Mat mask) {
 			// }
 			float period = calculate_period(x_sign);
 			if (period >= MINPERIOD && period <= MAXPERIOD) {
-				freq.at<float>(i,j) = 1.0f/period;
+				freq.at<float>(j,i) = 1.0f/period;
 			} else {
-				freq.at<float>(i,j) = -1;
+				freq.at<float>(j,i) = -1;
 			}
 		}
 	}
 
-	// for (int i=BLOCKSIZE/2 ; i<=image.rows-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
-	// 	for (int j=BLOCKSIZE/2 ; j<=image.cols-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-	// 		cout << freq.at<float>(i,j) << " ";
-	// 	}
-	// 	cout << endl;
-	// }
+	for (int i=BLOCKSIZE/2 ; i<=image.rows-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
+		for (int j=BLOCKSIZE/2 ; j<=image.cols-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+			cout << freq.at<float>(i,j) << " ";
+		}
+		cout << endl;
+	}
 	freq = interpolate_frequency(freq, mask);
 
 	cout << "-------------interpolated-------------" << endl;
-	// for (int i=BLOCKSIZE/2 ; i<=image.rows-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
-	// 	for (int j=BLOCKSIZE/2 ; j<=image.cols-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-	// 		cout << freq.at<float>(i,j) << " ";
-	// 	}
-	// 	cout << endl;
-	// }
+	for (int i=BLOCKSIZE/2 ; i<=image.rows-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
+		for (int j=BLOCKSIZE/2 ; j<=image.cols-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+			cout << freq.at<float>(i,j) << " ";
+		}
+		cout << endl;
+	}
 	return freq;
 }
 
@@ -377,7 +384,7 @@ vector< pair<int,int> > find_core_point(Mat orie) {
 				// cout << i+sequences[k].first << " " << j+sequences[k].second << endl;
 				int l = k+1 >= sequences.size() ? 0 : k+1;
 				// cout << "k " << k << " l " << l << endl;
-				float angle = orie.at<float>(i+sequences[k].first, j+sequences[k].second) - orie.at<float>(i+sequences[l].first, j+sequences[l].second);
+				float angle = orie.at<float>(j+sequences[k].first, i+sequences[k].second) - orie.at<float>(j+sequences[l].first, i+sequences[l].second);
 				// cout << angle << endl;
 				if (angle > 90) {
 					angle -= 180;
@@ -389,13 +396,13 @@ vector< pair<int,int> > find_core_point(Mat orie) {
 			// cout << sum << endl;
 			if (180-TOLERANCE <= sum && sum <= 180+TOLERANCE) {
 				// Loop point
-				cores.push_back(make_pair(i,j));
+				cores.push_back(make_pair(j,i));
 			} else if (-180-TOLERANCE <= sum && sum <= -180+TOLERANCE) {
 				// Delta point
-				cores.push_back(make_pair(i,j));
+				cores.push_back(make_pair(j,i));
 			} else if (360-TOLERANCE <= sum && sum <= 360+TOLERANCE) {
 				// Whorl point
-				cores.push_back(make_pair(i,j));
+				cores.push_back(make_pair(j,i));
 			}
 		}
 	}
@@ -411,11 +418,11 @@ Mat create_mask(Mat image) {
 
 			Scalar mean, stddev;
 			meanStdDev(segment, mean, stddev);
-			cout << "stddev " << stddev.val[0] << endl;
-			imshow("Segment", segment);
-			rectangle(image, Point(i,j), Point(i+BLOCKSIZE-1, j+BLOCKSIZE-1), CV_RGB(255,0,0), 1);
-			imshow("Image segment", image);
-			waitKey(0);
+			// cout << "stddev " << stddev.val[0] << endl;
+			// imshow("Segment", segment);
+			// rectangle(image, Point(j,i), Point(i+BLOCKSIZE-1, j+BLOCKSIZE-1), CV_RGB(255,0,0), 1);
+			// imshow("Image segment", image);
+			// waitKey(0);
 
 
 			// If stddev is more than threshold then it is fingerprint area
@@ -447,7 +454,7 @@ float calculate_average_orientation(Mat orie, Mat coherence, Mat mask) {
 		for (int j=BLOCKSIZE/2 ; j<=orie.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
 			if (mask.at<float>(j,i) == 1) {
 				// cout << "Orie : " << j << " " << i << endl;
-				// sum += orie.at<float>(i,j);
+				// sum += orie.at<float>(j,i);
 				float angle_diff = orie.at<float>(j,i+BLOCKSIZE) - orie.at<float>(j,i);
 				sum1 += (coherence.at<float>(j,i) * coherence.at<float>(j,i+BLOCKSIZE) * angle_diff);
 				sum2 += (coherence.at<float>(j,i) * coherence.at<float>(j,i+BLOCKSIZE));
@@ -464,9 +471,9 @@ float calculate_average_frequency(Mat freq, Mat mask) {
 	int count = 0;
 	for (int i=BLOCKSIZE/2 ; i<=freq.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
 		for (int j=BLOCKSIZE/2 ; j<=freq.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-			if (mask.at<float>(i,j) == 1) {
-				// cout << "Freq : " << i << " " << j << " - " << freq.at<float>(i,j) << endl;
-				sum += freq.at<float>(i,j);
+			if (mask.at<float>(j,i) == 1) {
+				// cout << "Freq : " << i << " " << j << " - " << freq.at<float>(j,i) << endl;
+				sum += freq.at<float>(j,i);
 				count++;
 			}
 		}
@@ -501,9 +508,11 @@ void get_local_values(Mat orie, Mat coherence, Mat freq, Mat mask, int core_i, i
 }
 
 int main(int argc, char** argv) {
-	// for (int i=0 ; i<LOCALWIDTH ; i++) {
-	// 	cout << offsets[i][0] << " " << offsets[i][1] << endl;
-	// }
+	if (argc < 2) {
+        cerr << "Usage : ./feature_extraction fingerprint_image\n";
+        return 0;
+    }
+
 	//Read image
 	String img = argv[1];
 	Mat image = imread(img, 0);
@@ -522,16 +531,18 @@ int main(int argc, char** argv) {
     waitKey(0);
 
 	Mat mask = create_mask(norm_image);
-	imshow("Maskkkkkk", mask);
+	imshow("Mask", mask);
+	waitKey(0);
 
     Mat orie = image.clone();
     Mat coherence = Mat::zeros(image.size(), image.type());
     orie = calculate_orientation(norm_image, coherence);
     visualize_orientation(orie, coherence, image);
+	waitKey(0);
 
 	Mat freq = calculate_frequency(norm_image, orie, mask);
 	visualize_frequency(freq, image);
-    // waitKey(0);
+    waitKey(0);
 
 	
 
