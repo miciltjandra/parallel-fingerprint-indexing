@@ -596,7 +596,7 @@ int main(int argc, char** argv) {
 	}
 	cout << "Number of cores : " << cores.size() << endl;
 
-	int next_id = get_new_fingerprint_id(get_last_id_from_file("1kdb"));
+	int next_id = get_new_fingerprint_id(get_last_id_from_file("10kdb"));
     printf("Next id %d\n", next_id);
 	cout << "Save how many cores?\n";
 	int ans;
@@ -611,7 +611,7 @@ int main(int argc, char** argv) {
 			get_local_values(orie, coherence, freq, mask, cores[i].first, cores[i].second, local_orie, local_coherence, local_freq);
 			fingerprints[i] = make_fingerprint_struct(next_id+i, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
 		}
-		save_to_file(num, fingerprints, "1kdb");
+		save_to_file(num, fingerprints, "10kdb");
 		cout << num << " cores saved\n";
 	} else {
 		cout << "Fingerprint isn't saved\n";
