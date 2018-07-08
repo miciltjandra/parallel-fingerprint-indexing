@@ -28,6 +28,7 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
         sum2 += (s * sin(d));
         sum3 += s;
     }
+    if (sum3 == 0) return 0;
     float result = sqrt(pow(sum1,2)+pow(sum2,2))/sum3;
 
     return result;
@@ -67,6 +68,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
     float fp_avg_orie = get_fingerprint_average_orientation(fp);
     float fp_avg_freq = get_fingerprint_average_frequency(fp);
     int n = db.size();
+    int counter = 0;
     for (int i=0 ; i<n ; i++) {
         int current_id = db[i+1].id;
         vector<float> db_local_orie, db_local_cohe, stub;
@@ -74,6 +76,8 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
         res_s1.push_back(s1);
+        cout << i << " : ID " << db[i].id << " ";
+        cout << "S1 = " << s1 << endl;
         if (s1 > best_core_s1) {
             best_core_idx = i;
             best_core_s1 = s1;
@@ -81,7 +85,8 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         // Last core for a fingerprint
         if (i==n-1 || (db[i+1].id%5 == 1)) {
-            cout << "Best core " << best_core_idx << endl;
+            cout << counter << " " << best_core_idx << endl;
+            counter += 1;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
 
@@ -111,7 +116,6 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 }
 
 int main(int argc, char** argv) {
-    cout << sizeof(struct fingerprint) << endl;
     if (argc < 3) {
         cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
         return 0;
@@ -127,7 +131,11 @@ int main(int argc, char** argv) {
     // Read the database
     vector<struct fingerprint> db;
     int count_db = read_from_file(db, db_filename);
-    cerr << "Fingerprint database count : " << count_db << endl;
+    cerr << "Fingerprint core database count : " << count_db << endl;
+
+    cerr << "Last fingerprint ID : " << db[count_db-1].id << endl;
+    int count_db_fingerprint = (db[count_db-1].id-1)/5+1;
+    cerr << "Fingerprint database count : " << count_db_fingerprint << endl;
 
     // Start timer
     auto timer_start = chrono::steady_clock::now();
@@ -175,6 +183,7 @@ int main(int argc, char** argv) {
    
     // This is code for checking that fingerprint may have more than 1 core
     // Core used is the one with best S1 value
+    // cout << "BEST CORE\n";
     get_top_fingerprints(fp[0], db, best_matches);
     sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest match\n";
@@ -187,10 +196,10 @@ int main(int argc, char** argv) {
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
 
     // DEBUG
-    cout << "\nS1\n";
-    for (int i=0 ; i<res_s1.size() ; i++) {
-        cout << res_s1[i] << endl;
-    }
+    // cout << "\nS1\n";
+    // for (int i=0 ; i<res_s1.size() ; i++) {
+    //     cout << res_s1[i] << endl;
+    // }
 
     cout << "\nS1\n";
     for (int i=0 ; i<ress_s1.size() ; i++) {
@@ -201,7 +210,7 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<res_s2.size() ; i++) {
         cout << res_s2[i] << endl;
     }
-
+/*
     cout << "\nS3\n";
     for (int i=0 ; i<res_s3.size() ; i++) {
         cout << res_s3[i] << endl;
@@ -216,8 +225,8 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<res_s.size() ; i++) {
         cout << res_s[i] << endl;
     }
-    
+    */
     return 0;
 }
 
-// g++ -o indexing indexing.cpp fingerprint_structure.cpp -std=c++11
+// g++ -o indexing_debug indexing_debug.cpp fingerprint_structure.cpp -std=c++11
