@@ -37,10 +37,15 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
 float calculate_s2(const vector<float> &local_freq_1, const vector<float> &local_freq_2) {
     float sum1 = 0.0f, sum2 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
+        // cout << i << " " << local_freq_1[i]+local_freq_2[i] << endl;
+        // cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << endl;
+        // cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << " " << local_freq_1[i]+local_freq_2[i] << endl;
+        // cout << i << " " << local_freq_1[i] << " " << local_freq_2[i] << endl;
         sum1 += abs(local_freq_1[i]-local_freq_2[i]);
         sum2 += local_freq_1[i]+local_freq_2[i];
     }
     float result = 1 - (sum1/sum2);
+    // cout << sum1 << " " << sum2 << " " << result << endl;
     return result;
 }
 
@@ -86,7 +91,6 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
         // Last core for a fingerprint
         if (i==n-1 || (db[i+1].id%5 == 1)) {
             cout << counter << " " << best_core_idx << endl;
-            counter += 1;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
 
@@ -95,6 +99,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
             ress_s1.push_back(best_core_s1);
 
+            // cout << "S2 " << counter << " ";
             float s2 = calculate_s2(fp_local_freq, db_local_freq);
             res_s2.push_back(s2);
 
@@ -111,6 +116,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
             results.push_back(make_pair(s, db[best_core_idx].id));
             best_core_idx = i+1;
             best_core_s1 = 0;
+            counter += 1;
         }
     }
 }
@@ -210,7 +216,7 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<res_s2.size() ; i++) {
         cout << res_s2[i] << endl;
     }
-/*
+
     cout << "\nS3\n";
     for (int i=0 ; i<res_s3.size() ; i++) {
         cout << res_s3[i] << endl;
@@ -225,7 +231,7 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<res_s.size() ; i++) {
         cout << res_s[i] << endl;
     }
-    */
+    
     return 0;
 }
 

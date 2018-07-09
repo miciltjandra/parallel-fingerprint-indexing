@@ -125,14 +125,25 @@ __global__ void calculate_s2(fingerprint* db, fingerprint* fp, float* result, in
     __shared__ float s_addition, s_absdiff;
     int j = mapping[blockIdx.x];
     int i = threadIdx.x;
+    if (i == 0) {
+        s_addition = 0.0f;
+        s_absdiff = 0.0f;
+    }
+    // printf("S2 idx %d %d\n", blockIdx.x, j);
     // int idx = blockIdx.x*blockDim.x + threadIdx.x;
     float t_addition = dbyte_to_frequency(fp->local_frequency[i]) + dbyte_to_frequency((db+j)->local_frequency[i]);
     float t_absdiff = abs(dbyte_to_frequency(fp->local_frequency[i]) - dbyte_to_frequency((db+j)->local_frequency[i]));
+    if (j == 16) {
+        // printf("%d %f\n", i, t_addition);
+        // printf("%d %f %f\n", i, dbyte_to_frequency(fp->local_frequency[i]), dbyte_to_frequency((db+j)->local_frequency[i]));
+    }
     atomicAdd(&s_addition, t_addition);
     atomicAdd(&s_absdiff, t_absdiff);
     __syncthreads();
     if (i == 0) {
+        // printf("%d %f %f\n", j, s_addition, s_absdiff);
         result[blockIdx.x] = 1 - (s_absdiff/s_addition);
+        // printf("%d %f %f %f\n", blockIdx.x, s_absdiff, s_addition, result[blockIdx.x]);
     }
 }
 
@@ -147,7 +158,7 @@ __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result, in
 }
 
 __global__ void calculate_s(float* s1, float* s2, float*s3, float* s4, float* result, int* mapping) {
-    int i = threadIdx.x;
+    int i = blockIdx.x;
     result[i] = w1*s1[mapping[i]] + w2*s2[i] + w3*s3[i] + w4*s4[i];
 }
 
@@ -223,16 +234,16 @@ int main(int argc, char** argv) {
     }
 
     // Check mapping
-    // std::cout << "BEST CORE\n";
-    // for (int i=0 ; i<count_db_fingerprint ; i++) {
-    //     std::cout << i << " " << mapping[i] << std::endl;
-    // }
+    std::cout << "BEST CORE\n";
+    for (int i=0 ; i<count_db_fingerprint ; i++) {
+        std::cout << i << " " << mapping[i] << std::endl;
+    }
 
     // Test S2
     // Only calculate for 1 core per fingerprint
     // calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
     calculate_s2<<<count_db_fingerprint,BLOCKSIZE>>>(d_db, d_fp, d_result, d_mapping);
-    cudaMemcpy(&s2_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&s2_result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     // std::cout << "\n\nS2\n";
     // for (int i=0 ; i<count_db ; i++) {
     //     std::cout << i << " : ID " << db[i].id << std::endl;
@@ -271,7 +282,7 @@ int main(int argc, char** argv) {
     cudaMemcpy(d_s3_result, &s3_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_s4_result, &s4_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
     // calculate_s<<<1,count_db>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
-    calculate_s<<<1,count_db_fingerprint>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result, d_mapping);
+    calculate_s<<<count_db_fingerprint, 1>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result, d_mapping);
     cudaMemcpy(&result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
     // S
     // for (int i=0 ; i<count_db ; i++) {
@@ -280,7 +291,7 @@ int main(int argc, char** argv) {
         std::cout << "result = " << result[i] << std::endl;
     }*/
 
-    float *d_final_result;
+    // float *d_final_result;
     /* This is for when not used with mapping */
     // get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
     // cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
@@ -315,7 +326,7 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         std::cout << s2_result[i] << std::endl;
     }
-    /*
+    
     std::cout << "\nS3\n";
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         std::cout << s3_result[i] << std::endl;
@@ -329,7 +340,7 @@ int main(int argc, char** argv) {
     std::cout << "\nS\n";
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         std::cout << result[i] << std::endl;
-    }*/
+    }
 
     cudaFree(d_fp);
     cudaFree(d_db);
