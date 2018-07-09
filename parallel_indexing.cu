@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <thrust/sort.h>
 #include "fingerprint_structure.hpp"
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -296,20 +297,38 @@ int main(int argc, char** argv) {
     // get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
     // cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     // std::cout << "\n\nFinal Result\n";
+    float t_result[count_db_fingerprint];
+    int ids[count_db_fingerprint];
     std::vector< std::pair<float, int> > best_matches;
     for (int i=0 ; i<count_db_fingerprint ; i++) {
     //     std::cout << "result = " << result[i] << std::endl;
         best_matches.push_back(std::make_pair(result[i], db[mapping[i]].id));
+        t_result[i] = result[i];
+        ids[i] = db[mapping[i]].id;
     }
-    sort(best_matches.rbegin(), best_matches.rend());
+    // sort(best_matches.rbegin(), best_matches.rend());
+    // thrust::sort(best_matches.rbegin(), best_matches.rend());
+    // thrust::sort(result, result+count_db_fingerprint);
+    // std::cout << "Before sort\n";
+    // for (int i=0 ; i<count_db_fingerprint ; i++) {
+    //     std::cout << i << " " << ids[i] << " " << t_result[i] << std::endl;
+    // }
+    auto sort_start = std::chrono::steady_clock::now();
+    thrust::sort_by_key(t_result, t_result+count_db_fingerprint, ids);
     std::cout << "\nBest match\n";
-    for (int i=0 ; i<best_matches.size() ; i++) {
-        std::cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
+    /*for (int i=0 ; i<best_matches.size() ; i++) {
+        // std::cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
+        std::cout << std::endl;
+    }*/
+    for (int i=count_db_fingerprint-1 ; i>=0 ; i--) {
+        std::cout << "ID " << ids[i] << "-"<< ids[i]/5 <<"\t: " << t_result[i];
         std::cout << std::endl;
     }
     auto timer_end = std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = timer_end - timer_start;
+    std::chrono::duration<double> sort_time = timer_end - sort_start;
     std::cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << std::endl;
+    std::cout << "Time for sorting " << sort_time.count() << std::endl;
 
     // DEBUG
     // std::cout << "\nS1\n";

@@ -191,6 +191,7 @@ int main(int argc, char** argv) {
     // Core used is the one with best S1 value
     // cout << "BEST CORE\n";
     get_top_fingerprints(fp[0], db, best_matches);
+    auto sort_start = std::chrono::steady_clock::now();
     sort(best_matches.rbegin(), best_matches.rend());
     cout << "\nBest match\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
@@ -199,7 +200,9 @@ int main(int argc, char** argv) {
     }
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
+    std::chrono::duration<double> sort_time = timer_end - sort_start;
     cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+    std::cout << "Time for sorting " << sort_time.count() << std::endl;
 
     // DEBUG
     // cout << "\nS1\n";
