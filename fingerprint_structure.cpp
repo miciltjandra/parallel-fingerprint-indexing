@@ -120,8 +120,8 @@ void save_to_file(int size, struct fingerprint fps[], std::string filename) {
 
     fwrite(&fps[0], sizeof(struct fingerprint), size, f);
 
-    for (int i=0 ; i<size ; i++)
-        print_fingerprint_struct(fps[i]);
+    // for (int i=0 ; i<size ; i++)
+    //     print_fingerprint_struct(fps[i]);
 
     // for (int i=0 ; i<size ; i++) {
     //     fprintf(f, "%d", fps[i].id);
