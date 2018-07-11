@@ -81,8 +81,8 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
         res_s1.push_back(s1);
-        cout << i << " : ID " << db[i].id << " ";
-        cout << "S1 = " << s1 << endl;
+        // cout << i << " : ID " << db[i].id << " ";
+        // cout << "S1 = " << s1 << endl;
         if (s1 > best_core_s1) {
             best_core_idx = i;
             best_core_s1 = s1;
@@ -90,7 +90,7 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         // Last core for a fingerprint
         if (i==n-1 || (db[i+1].id%5 == 1)) {
-            cout << counter << " " << best_core_idx << endl;
+            // cout << counter << " " << best_core_idx << endl;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
 
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
     get_top_fingerprints(fp[0], db, best_matches);
     auto sort_start = std::chrono::steady_clock::now();
     sort(best_matches.rbegin(), best_matches.rend());
-    cout << "\nBest match\n";
+    // cout << "\nBest match\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
         cout << endl;
@@ -201,9 +201,9 @@ int main(int argc, char** argv) {
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
     std::chrono::duration<double> sort_time = timer_end - sort_start;
-    cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
-    std::cout << "Time for sorting " << sort_time.count() << std::endl;
-
+    cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+    std::cerr << "Time for sorting " << sort_time.count() << std::endl;
+/*
     // DEBUG
     // cout << "\nS1\n";
     // for (int i=0 ; i<res_s1.size() ; i++) {
@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
     for (int i=0 ; i<res_s.size() ; i++) {
         cout << res_s[i] << endl;
     }
-    
+*/  
     return 0;
 }
 
