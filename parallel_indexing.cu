@@ -155,7 +155,7 @@ __global__ void calculate_s3(fingerprint* db, fingerprint* fp, float* result, in
 
 __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
     int j = mapping[blockIdx.x];
-    result[blockIdx.x] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/M_PI);
+    result[blockIdx.x] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/180.0f);
 }
 
 __global__ void calculate_s(float* s1, float* s2, float*s3, float* s4, float* result, int* mapping) {
@@ -333,6 +333,7 @@ int main(int argc, char** argv) {
     // }
     auto sort_start = std::chrono::steady_clock::now();
     thrust::sort_by_key(t_result, t_result+count_db_fingerprint, ids);
+    auto sort_end = std::chrono::steady_clock::now();
     // std::cout << "\nBest match\n";
     /*for (int i=0 ; i<best_matches.size() ; i++) {
         // // std::cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
@@ -344,7 +345,7 @@ int main(int argc, char** argv) {
     }
     auto timer_end = std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = timer_end - timer_start;
-    std::chrono::duration<double> sort_time = timer_end - sort_start;
+    std::chrono::duration<double> sort_time = sort_end - sort_start;
     std::cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << std::endl;
     std::cerr << "Time for sorting " << sort_time.count() << std::endl;
 

@@ -55,7 +55,7 @@ float calculate_s3(const float &avg_freq_1, const float &avg_freq_2) {
 }
 
 float calculate_s4(const float &local_orie_1, const float &local_orie_2) {
-    float result = 1-(abs(local_orie_1-local_orie_2)/M_PI);
+    float result = 1-(abs(local_orie_1-local_orie_2)/180.0f);
     return result;
 }
 
@@ -193,6 +193,7 @@ int main(int argc, char** argv) {
     get_top_fingerprints(fp[0], db, best_matches);
     auto sort_start = std::chrono::steady_clock::now();
     sort(best_matches.rbegin(), best_matches.rend());
+    auto sort_end = chrono::steady_clock::now();
     // cout << "\nBest match\n";
     for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
@@ -200,9 +201,22 @@ int main(int argc, char** argv) {
     }
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
-    std::chrono::duration<double> sort_time = timer_end - sort_start;
+    std::chrono::duration<double> sort_time = sort_end - sort_start;
     cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
     std::cerr << "Time for sorting " << sort_time.count() << std::endl;
+
+    for (int i=0 ; i<count_db ; i++) {
+        if (db[i].id == 48808) {
+            print_fingerprint_struct(db[i]);
+            cout << endl;
+            print_fingerprint_struct(fp[0]);
+            cout << res_s1[i] << endl;
+            cout << res_s2[48807/5+1] << endl;
+            cout << res_s3[48807/5+1] << endl;
+            cout << res_s4[48807/5+1] << endl;
+            cout << res_s[48807/5+1] << endl;
+        }
+    }
 /*
     // DEBUG
     // cout << "\nS1\n";
