@@ -128,12 +128,12 @@ __global__ void calculate_s3_with_mapping(fingerprint* db, fingerprint* fp, floa
 
 __global__ void calculate_s4(fingerprint* db, fingerprint* fp, float* result) {
     int j = blockIdx.x;
-    result[j] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/M_PI);
+    result[j] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/180.0f);
 }
 
 __global__ void calculate_s4_with_mapping(fingerprint* db, fingerprint* fp, float* result, int* mapping) {
     int j = mapping[blockIdx.x];
-    result[blockIdx.x] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/M_PI);
+    result[blockIdx.x] = 1-(abs(dbyte_to_orientation(fp->avg_orientation)-dbyte_to_orientation((db+j)->avg_orientation))/180.0f);
 }
 
 __global__ void calculate_s(float* s1, float* s2, float*s3, float* s4, float* result) {
