@@ -62,14 +62,12 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
     __shared__ float ss, scos, ssin;
     int j = blockIdx.x;
     int i = threadIdx.x;
-    // int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (i == 0) {
         ss = 0;
         scos = 0;
         ssin = 0;
     }
     __syncthreads();
-    // (db+j)->local_frequency[i] = dfrequency_t_byte(dbyte_to_frequency((db+j)->local_frequency[i])+0.1);
     float s = dbyte_to_coherence(fp->local_coherence[i])*dbyte_to_coherence((db+j)->local_coherence[i]);
     float d = M_PI/180.0f * 2 * (dbyte_to_orientation(fp->local_orientation[i])-dbyte_to_orientation((db+j)->local_orientation[i]));
     float tcos = s*cos(d);
@@ -83,37 +81,16 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
         if (ss != 0) result[j] = sqrt(pow(scos,2)+pow(ssin,2))/ss;
         else result[j] = 0;
     }
-    /*__syncthreads();
-    if (i == 0) printf("Idx %d %f\n", j, result[j]);
-    // First core of a fingerprint check maximum from all core
-    if (i == 0 && (db+j)->id%5 == 1) {
-        // printf("Index %d\n", j);
-        int max_idx = j;
-        for (int k=1 ; k<5 ; k++) {
-            if ((db+j+k)->id%5 == 1) break;
-            else {
-                // printf("%d %d %f %f\n", max_idx, j+k, result[max_idx], result[j+k]);
-                if (result[j+k] > result[max_idx]) {
-                    // printf("%d %d\n", max_idx, j+k);
-                    max_idx = j+k;
-                }
-            }
-        }
-        mapping[((db+j)->id-1)/5] = max_idx;
-    }*/
 }
 
 __global__ void get_best_core_s1(fingerprint* db, float* result, int* mapping) {
     int i = blockIdx.x;
-    // printf("Index %d %d\n", i, (db+i)->id);
     if ((db+i)->id%5 == 1) {
         int max_idx = i;
         for (int j=1 ; j<5 ; j++) {
             if ((db+i+j)->id%5 == 1) break;
             else {
-                // printf("%d %d %f %f\n", max_idx, i+j, result[max_idx], result[i+j]);
                 if (result[i+j] > result[max_idx]) {
-                    // printf("%d %d\n", max_idx, i+j);
                     max_idx = i+j;
                 }
             }
@@ -130,21 +107,13 @@ __global__ void calculate_s2(fingerprint* db, fingerprint* fp, float* result, in
         s_addition = 0.0f;
         s_absdiff = 0.0f;
     }
-    // printf("S2 idx %d %d\n", blockIdx.x, j);
-    // int idx = blockIdx.x*blockDim.x + threadIdx.x;
     float t_addition = dbyte_to_frequency(fp->local_frequency[i]) + dbyte_to_frequency((db+j)->local_frequency[i]);
     float t_absdiff = abs(dbyte_to_frequency(fp->local_frequency[i]) - dbyte_to_frequency((db+j)->local_frequency[i]));
-    if (j == 16) {
-        // printf("%d %f\n", i, t_addition);
-        // printf("%d %f %f\n", i, dbyte_to_frequency(fp->local_frequency[i]), dbyte_to_frequency((db+j)->local_frequency[i]));
-    }
     atomicAdd(&s_addition, t_addition);
     atomicAdd(&s_absdiff, t_absdiff);
     __syncthreads();
     if (i == 0) {
-        // printf("%d %f %f\n", j, s_addition, s_absdiff);
         result[blockIdx.x] = 1 - (s_absdiff/s_addition);
-        // printf("%d %f %f %f\n", blockIdx.x, s_absdiff, s_addition, result[blockIdx.x]);
     }
 }
 
