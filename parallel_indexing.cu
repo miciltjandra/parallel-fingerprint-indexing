@@ -170,22 +170,16 @@ __global__ void get_top_fingerprints(float* s, float* result, int* mapping) {
 
 int main(int argc, char** argv) {
     if (argc < 3) {
-        // std::cerr << "Usage : ./parallel_indexing fingerprint-to-be-searched fingerprint-db\n";
+        std::cerr << "Usage : ./parallel_indexing fingerprint-to-be-searched fingerprint-db\n";
         return 0;
     }
 
     std::string fp_filename = argv[1];
     std::string db_filename = argv[2];
-    // std::cerr << "FP " << fp_filename << " DB " << db_filename << std::endl;
 
     // Read the fingerprint to be searched
     std::vector<struct fingerprint> fp;
     int count_fp = read_from_file(fp, fp_filename);
-
-    std::vector<float> local_orie, local_cohe, local_freq;
-    get_fingerprint_local_values(fp[0], local_orie, local_cohe, local_freq);
-    float avg_o = get_fingerprint_average_orientation(fp[0]);
-    float avg_f = get_fingerprint_average_frequency(fp[0]);
 
     // Read the database
     std::vector<struct fingerprint> db;
@@ -197,124 +191,58 @@ int main(int argc, char** argv) {
     std::cerr << "Fingerprint database count : " << count_db_fingerprint << std::endl;
 
     auto timer_start = std::chrono::steady_clock::now();
-    // S1
+
+    // Preparing memory
     fingerprint *d_fp, *d_db;
-    // float s1_result[count_db], s2_result[count_db], s3_result[count_db], s4_result[count_db];
-    // float result[count_db];
     std::vector<float> result(count_db_fingerprint, 0);
-    float *d_result;
-    float *d_s1_result, *d_s2_result, *d_s3_result, *d_s4_result;
-    // std::cout << "Starting cudaMalloc\n";
+    float *d_s1_result, *d_s2_result, *d_s3_result, *d_s4_result, *d_result;
+    
+    cudaMalloc((void **)&d_fp, sizeof(fingerprint));
+    cudaMalloc((void **)&d_db, count_db*sizeof(fingerprint));
+
     cudaMalloc((void **)&d_s1_result, count_db*sizeof(float));
     cudaMalloc((void **)&d_s2_result, count_db_fingerprint*sizeof(float));
     cudaMalloc((void **)&d_s3_result, count_db_fingerprint*sizeof(float));
     cudaMalloc((void **)&d_s4_result, count_db_fingerprint*sizeof(float));
-    
-    cudaMalloc((void **)&d_fp, sizeof(fingerprint));
-    cudaMalloc((void **)&d_db, count_db*sizeof(fingerprint));
     cudaMalloc((void **)&d_result, count_db_fingerprint*sizeof(float));
 
-    //Mapping for block idx to fingerprint core idx
+    //Mapping for fingerprint to fingerprint core idx
     int *d_mapping;
     cudaMalloc((void **)&d_mapping, count_db_fingerprint*sizeof(int));
 
-    // std::cout << "Starting cudaMemcpy\n";
-
     cudaMemcpy(d_db, &db[0], count_db*sizeof(fingerprint), cudaMemcpyHostToDevice);
     cudaMemcpy(d_fp, &fp[0], sizeof(fingerprint), cudaMemcpyHostToDevice);
-    // auto timer_start = std::chrono::steady_clock::now();
-    // std::cout << "Starting S1\n";
+
+    // S1
     calculate_s1<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_s1_result);
     get_best_core_s1<<<count_db, 1>>>(d_db, d_s1_result, d_mapping);
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
-    // cudaMemcpy(&s1_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
-    
 
-    // int mapping[count_db_fingerprint];
-    // memset(mapping, 0, sizeof(mapping));
     std::vector<int> mapping(count_db_fingerprint, 0);
     cudaMemcpy(&mapping[0], d_mapping, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
-    std::vector<float> s1_result;
-    s1_result.resize(count_db, 0);
-    cudaMemcpy(&s1_result[0], d_s1_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
+    // std::vector<float> s1_result;
+    // s1_result.resize(count_db, 0);
+    // cudaMemcpy(&s1_result[0], d_s1_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
 
-    /*
-    int counter = 0;
-    for (int i=0 ; i<count_db ; i++) {
-        std::cout << i << " : ID " << db[i].id << " ";
-        std::cout << "S1 = " << s1_result[i] << std::endl;
-        if (i==count_db-1 || (db[i+1].id%5 == 1)) {
-            std::cout << counter << " " << mapping[counter] << std::endl;
-            counter++;
-        }
-    }*/
-
-    // Check mapping
-    // std::cout << "BEST CORE\n";
-    // for (int i=0 ; i<count_db_fingerprint ; i++) {
-        // std::cout << i << " " << mapping[i] << std::endl;
-    // }
-
-    // Test S2
-    // Only calculate for 1 core per fingerprint
-    // calculate_s2<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_result);
+    // S2
+    // Only calculate for 1 core per fingerprint using mapping
     calculate_s2<<<count_db_fingerprint,BLOCKSIZE>>>(d_db, d_fp, d_s2_result, d_mapping);
-    // cudaMemcpy(&s2_result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-    // // std::cout << "\n\nS2\n";
-    // for (int i=0 ; i<count_db ; i++) {
-    //     // std::cout << i << " : ID " << db[i].id << std::endl;
-    //     // std::cout << "result = " << s2_result[i] << std::endl;
-    // }
+    // cudaMemcpy(&s2_result[0], d_s2_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
 
-    // Test S3
-    // calculate_s3<<<count_db,1>>>(d_db, d_fp, d_result);
+    // S3
     calculate_s3<<<count_db_fingerprint,1>>>(d_db, d_fp, d_s3_result,d_mapping);
-    // cudaMemcpy(&s3_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
-    // // std::cout << "\n\nS3\n";
-    // for (int i=0 ; i<count_db ; i++) {
-    //     // std::cout << i << " : ID " << db[i].id << std::endl;
-    //     // std::cout << "result = " << s3_result[i] << std::endl;
-    // }
+    // cudaMemcpy(&s3_result[0], d_s3_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
 
-    // Test S4
-    // calculate_s4<<<count_db,1>>>(d_db, d_fp, d_result);
+    // S4
     calculate_s4<<<count_db_fingerprint,1>>>(d_db, d_fp, d_s4_result, d_mapping);
-    // cudaMemcpy(&s4_result[0], d_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
-    // // std::cout << "\n\nS4\n";
-    // for (int i=0 ; i<count_db ; i++) {
-    //     // std::cout << i << " : ID " << db[i].id << std::endl;
-    //     // std::cout << "result = " << s4_result[i] << std::endl;
-    // }
+    // cudaMemcpy(&s4_result[0], d_s4_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
 
-    // Test S
-    // Copy S1-S4 to device
-    // float *d_s1_result, *d_s2_result, *d_s3_result, *d_s4_result;
-    // cudaMalloc((void **)&d_s1_result, count_db*sizeof(float));
-    // cudaMalloc((void **)&d_s2_result, count_db*sizeof(float));
-    // cudaMalloc((void **)&d_s3_result, count_db*sizeof(float));
-    // cudaMalloc((void **)&d_s4_result, count_db*sizeof(float));
-    // cudaMemcpy(d_s1_result, &s1_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_s2_result, &s2_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_s3_result, &s3_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_s4_result, &s4_result[0], count_db*sizeof(float), cudaMemcpyHostToDevice);
-    // calculate_s<<<1,count_db>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result);
+    // S
     calculate_s<<<count_db_fingerprint, 1>>>(d_s1_result, d_s2_result, d_s3_result, d_s4_result, d_result, d_mapping);
     // cudaMemcpy(&result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-    // S
-    // for (int i=0 ; i<count_db ; i++) {
-    /*for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << i << " : ID " << db[i].id << std::endl;
-        std::cout << "result = " << result[i] << std::endl;
-    }*/
 
-    // float *d_final_result;
-    /* This is for when not used with mapping */
-    // get_top_fingerprints<<<1,count_db_fingerprint>>>(d_result, d_final_result, d_mapping);
-    // cudaMemcpy(&result[0], d_final_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-    // // std::cout << "\n\nFinal Result\n";
-    // float* t_result = new float[count_db_fingerprint];
-    // std::vector<float> t_result(count_db_fingerprint, 0);
+    // ID for identifying fingerprint during sort
     int* ids = new int[count_db_fingerprint];
     for (int i=0 ; i<count_db_fingerprint ; i++) {
         ids[i] = db[mapping[i]].id;
@@ -322,33 +250,14 @@ int main(int argc, char** argv) {
     int* d_ids;
     cudaMalloc((void **)&d_ids, count_db_fingerprint*sizeof(int));
     cudaMemcpy(d_ids, &ids[0], count_db_fingerprint*sizeof(int), cudaMemcpyHostToDevice);
-    // std::vector<int> ids(count_db_fingerprint, 0);
-    // std::vector< std::pair<float, int> > best_matches;
-    // for (int i=0 ; i<count_db_fingerprint ; i++) {
-    //     // std::cout << "result = " << result[i] << std::endl;
-        // best_matches.push_back(std::make_pair(result[i], db[mapping[i]].id));
-    //     t_result[i] = result[i];
-    //     ids[i] = db[mapping[i]].id;
-    // }
-    // sort(best_matches.rbegin(), best_matches.rend());
-    // thrust::sort(best_matches.rbegin(), best_matches.rend());
-    // thrust::sort(result, result+count_db_fingerprint);
-    // // std::cout << "Before sort\n";
-    // for (int i=0 ; i<count_db_fingerprint ; i++) {
-    //     // std::cout << i << " " << ids[i] << " " << t_result[i] << std::endl;
-    // }
+    
     auto sort_start = std::chrono::steady_clock::now();
-    // thrust::sort_by_key(t_result, t_result+count_db_fingerprint, ids);
     thrust::sort_by_key(thrust::device, d_result, d_result+count_db_fingerprint, d_ids);
     auto sort_end = std::chrono::steady_clock::now();
+
     cudaMemcpy(&result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(&ids[0], d_ids, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
-    // auto sort_end = std::chrono::steady_clock::now();
-    // std::cout << "\nBest match\n";
-    /*for (int i=0 ; i<best_matches.size() ; i++) {
-        // // std::cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
-        // std::cout << std::endl;
-    }*/
+    
     for (int i=count_db_fingerprint-1 ; i>=0 ; i--) {
         std::cout << "ID " << ids[i] << "-"<< ids[i]/5 <<"\t: " << result[i];
         std::cout << std::endl;
@@ -359,47 +268,6 @@ int main(int argc, char** argv) {
     std::cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << std::endl;
     std::cerr << "Time for sorting " << sort_time.count() << std::endl;
 
-/*
-    // DEBUG
-    // // std::cout << "\nS1\n";
-    // for (int i=0 ; i<count_db ; i++) {
-    //     // std::cout << s1_result[i] << std::endl;
-    // }
-    std::vector<float> s2_result, s3_result, s4_result;
-    s1_result.resize(count_db, 0);
-    s2_result.resize(count_db_fingerprint, 0);
-    s3_result.resize(count_db_fingerprint, 0);
-    s4_result.resize(count_db_fingerprint, 0);
-    cudaMemcpy(&s1_result[0], d_s1_result, count_db*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&s2_result[0], d_s2_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&s3_result[0], d_s3_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&s4_result[0], d_s4_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
-
-    std::cout << "\nS1\n";
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << s1_result[mapping[i]] << std::endl;
-    }
-
-    std::cout << "\nS2\n";
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << s2_result[i] << std::endl;
-    }
-    
-    std::cout << "\nS3\n";
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << s3_result[i] << std::endl;
-    }
-
-    std::cout << "\nS4\n";
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << s4_result[i] << std::endl;
-    }
-
-    std::cout << "\nS\n";
-    for (int i=0 ; i<count_db_fingerprint ; i++) {
-        std::cout << result[i] << std::endl;
-    }
-*/
     cudaFree(d_fp);
     cudaFree(d_db);
     cudaFree(d_result);
@@ -408,7 +276,7 @@ int main(int argc, char** argv) {
     cudaFree(d_s2_result);
     cudaFree(d_s3_result);
     cudaFree(d_s4_result);
-    // cudaFree(d_final_result);
+    cudaFree(d_ids);
 
     return 0;
 }
