@@ -585,13 +585,15 @@ void save_feature(Mat orie, Mat cohe, Mat freq, string name) {
 }
 
 int main(int argc, char** argv) {
-	if (argc < 2) {
-        cerr << "Usage : ./feature_extraction fingerprint_image\n";
+	if (argc < 3) {
+        cerr << "Usage : ./feature_extraction fingerprint_image database_filename\n";
         return 0;
     }
 
 	//Read image
 	String img = argv[1];
+	string db_name = argv[2];
+	cout << db_name << endl;
 	Mat image = imread(img, 0);
 
 	//Check for failure
@@ -665,7 +667,7 @@ int main(int argc, char** argv) {
 	}
 	cout << "Number of cores : " << cores.size() << endl;
 
-	int next_id = get_new_fingerprint_id(get_last_id_from_file("10kdb"));
+	int next_id = get_new_fingerprint_id(get_last_id_from_file(db_name));
     printf("Next id %d\n", next_id);
 	cout << "Save how many cores?\n";
 	int ans;
@@ -681,7 +683,7 @@ int main(int argc, char** argv) {
 			get_local_values(orie, coherence, freq, mask, cores[i].first, cores[i].second, local_orie, local_coherence, local_freq);
 			fingerprints[i] = make_fingerprint_struct(next_id+i, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
 		}
-		// save_to_file(num, fingerprints, "10kdb");
+		save_to_file(num, fingerprints, db_name);
 		cout << num << " cores saved\n";
 	} else {
 		cout << "Fingerprint isn't saved\n";
