@@ -175,6 +175,42 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 	return orient;
 }
 
+void correct_orientation(Mat &orie, Mat &cohe, Mat image) {
+	cout << orie.rows << " " << orie.cols << endl;
+	for (int i=BLOCKSIZE/2 ; i<=orie.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
+		for (int j=BLOCKSIZE/2 ; j<=orie.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+			bool done = false;
+			while (!done) {
+				Mat block = image(cv::Rect(i-BLOCKSIZE/2, j-BLOCKSIZE/2, BLOCKSIZE, BLOCKSIZE));
+				float r = BLOCKSIZE/2 - 1;
+				float angle = orie.at<float>(j,i);
+				int x1 = r * cos(angle*CV_PI/180.0f) + BLOCKSIZE/2;
+				int y1 = r * sin(angle*CV_PI/180.0f) + BLOCKSIZE/2;
+				int x2 = BLOCKSIZE/2 - r*cos(angle*CV_PI/180.0f);
+				int y2 = BLOCKSIZE/2 - r*sin(angle*CV_PI/180.0f);
+				Point P1(x1,y1), P2(x2,y2);
+				cvtColor(block, block, cv::COLOR_GRAY2BGR);
+				line(block, P1, P2, CV_RGB(0, 0, 255));
+				imshow("Block Orientation", block);
+				rectangle(image, Point(i-BLOCKSIZE/2, j-BLOCKSIZE/2), Point(i+BLOCKSIZE/2, j+BLOCKSIZE/2), CV_RGB(255,0,0), 1);
+				visualize_orientation(orie, cohe, image);
+				cout << "Current angle : " << angle << endl;
+				cout << "Input new angle : ";
+				waitKey(1);
+				// float newangle;
+				// cin >> newangle;
+				string buf;
+				getline(cin, buf);
+				if (buf != "") {
+					orie.at<float>(j,i) = atof(buf.c_str());
+				} else {
+					done = true;
+				}
+			}
+		}
+	}
+}
+
 void visualize_frequency(Mat freq, Mat image) {
 	Mat visual = image.clone();
 	for (int i=BLOCKSIZE/2 ; i<=freq.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
@@ -580,6 +616,7 @@ int main(int argc, char** argv) {
     orie = calculate_orientation(norm_image, coherence);
     visualize_orientation(orie, coherence, image);
 	waitKey(0);
+	correct_orientation(orie, coherence, image);
 
 	Mat freq = calculate_frequency(norm_image, orie, mask);
 	visualize_frequency(freq, image);
