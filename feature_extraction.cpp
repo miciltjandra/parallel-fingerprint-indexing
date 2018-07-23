@@ -175,11 +175,47 @@ Mat calculate_orientation(Mat img, Mat &coherence) {
 	return orient;
 }
 
+void correct_orientation(Mat &orie, Mat &cohe, Mat image) {
+	cout << orie.rows << " " << orie.cols << endl;
+	for (int i=BLOCKSIZE/2 ; i<=orie.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
+		for (int j=BLOCKSIZE/2 ; j<=orie.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
+			bool done = false;
+			while (!done) {
+				Mat block = image(cv::Rect(i-BLOCKSIZE/2, j-BLOCKSIZE/2, BLOCKSIZE, BLOCKSIZE));
+				float r = BLOCKSIZE/2 - 1;
+				float angle = orie.at<float>(j,i);
+				int x1 = r * cos(angle*CV_PI/180.0f) + BLOCKSIZE/2;
+				int y1 = r * sin(angle*CV_PI/180.0f) + BLOCKSIZE/2;
+				int x2 = BLOCKSIZE/2 - r*cos(angle*CV_PI/180.0f);
+				int y2 = BLOCKSIZE/2 - r*sin(angle*CV_PI/180.0f);
+				Point P1(x1,y1), P2(x2,y2);
+				cvtColor(block, block, cv::COLOR_GRAY2BGR);
+				line(block, P1, P2, CV_RGB(0, 0, 255));
+				imshow("Block Orientation", block);
+				rectangle(image, Point(i-BLOCKSIZE/2, j-BLOCKSIZE/2), Point(i+BLOCKSIZE/2, j+BLOCKSIZE/2), CV_RGB(255,0,0), 1);
+				visualize_orientation(orie, cohe, image);
+				cout << "Current angle : " << angle << endl;
+				cout << "Input new angle : ";
+				waitKey(1);
+				// float newangle;
+				// cin >> newangle;
+				string buf;
+				getline(cin, buf);
+				if (buf != "") {
+					orie.at<float>(j,i) = atof(buf.c_str());
+				} else {
+					done = true;
+				}
+			}
+		}
+	}
+}
+
 void visualize_frequency(Mat freq, Mat image) {
 	Mat visual = image.clone();
 	for (int i=BLOCKSIZE/2 ; i<=freq.cols-BLOCKSIZE/2 ; i+=BLOCKSIZE) {
 		for (int j=BLOCKSIZE/2 ; j<=freq.rows-BLOCKSIZE/2 ; j+=BLOCKSIZE) {
-			// cout << j << " " << i << " " << freq.at<float>(j,i) << endl;
+			cout << j << " " << i << " " << freq.at<float>(j,i) << endl;
 			for (int u=i-BLOCKSIZE/2 ; u<i+BLOCKSIZE/2 ; u++) {
 				for (int v=j-BLOCKSIZE/2 ; v<j+BLOCKSIZE/2 ; v++) {
 					visual.at<uchar>(v,u) = 255 - (freq.at<float>(j,i)/(1.0f/3) * 255);
@@ -516,14 +552,48 @@ void get_local_values(Mat orie, Mat coherence, Mat freq, Mat mask, int core_i, i
 	// waitKey(0);
 }
 
+void save_feature(Mat orie, Mat cohe, Mat freq, string name) {
+	string filename = name.substr(0, name.find("."));	
+	std::cout << filename << endl;
+	vector<int> compression_params;
+    /*compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+    compression_params.push_back(0);
+	imwrite("fea/" + filename + "_orie.png", orie, compression_params);
+	imwrite("fea/" + filename + "_cohe.png", cohe, compression_params);
+	// imwrite("fea/" + filename + "_freq.png", freq, compression_params);
+	cout << orie.depth() << " " << orie.channels() << endl;
+	cout << cohe.depth() << " " << cohe.channels() << endl;
+	freq.convertTo(freq, 0);
+	imwrite("fea/" + filename + "_freq.png", freq, compression_params);
+	cout << freq.depth() << " " << freq.channels() << endl;
+	freq.convertTo(freq, 5);
+	for (int i=0 ; i<orie.rows ; i++) {
+        for (int j=0 ; j<orie.cols ; j++) {
+            // cout << orie.at<float>(i,j) << " ";
+            // cout << cohe.at<float>(i,j) << " ";
+			freq.at<float>(i,j) = freq.at<float>(i,j)*100000;
+            cout << freq.at<float>(i,j) << " ";
+        }
+        cout << endl;
+    }
+	// imwrite("fea/" + filename + "_freq.png", freq, compression_params);
+	*/
+	FileStorage fs("fea/"+filename+"_fea.yml", FileStorage::WRITE);
+	fs << "orie" << orie;
+	fs << "cohe" << cohe;
+	fs << "freq" << freq;
+}
+
 int main(int argc, char** argv) {
-	if (argc < 2) {
-        cerr << "Usage : ./feature_extraction fingerprint_image\n";
+	if (argc < 3) {
+        cerr << "Usage : ./feature_extraction fingerprint_image database_filename\n";
         return 0;
     }
 
 	//Read image
 	String img = argv[1];
+	string db_name = argv[2];
+	cout << db_name << endl;
 	Mat image = imread(img, 0);
 
 	//Check for failure
@@ -547,11 +617,12 @@ int main(int argc, char** argv) {
     Mat coherence = Mat::zeros(image.size(), image.type());
     orie = calculate_orientation(norm_image, coherence);
     visualize_orientation(orie, coherence, image);
-	// waitKey(0);
+	waitKey(0);
+	correct_orientation(orie, coherence, image);
 
 	Mat freq = calculate_frequency(norm_image, orie, mask);
 	visualize_frequency(freq, image);
-    // waitKey(0);
+    waitKey(0);
 
 	
 
@@ -596,13 +667,14 @@ int main(int argc, char** argv) {
 	}
 	cout << "Number of cores : " << cores.size() << endl;
 
-	int next_id = get_new_fingerprint_id(get_last_id_from_file("10kdb"));
+	int next_id = get_new_fingerprint_id(get_last_id_from_file(db_name));
     printf("Next id %d\n", next_id);
 	cout << "Save how many cores?\n";
 	int ans;
 	// cin >> ans;
 	ans = 5;
 	// waitKey(0);
+	// save_feature(orie, coherence, freq, img);
 	if (ans) {
 		int num = min(min((int)cores.size(), ans), 5);
 		struct fingerprint fingerprints[num];
@@ -611,12 +683,12 @@ int main(int argc, char** argv) {
 			get_local_values(orie, coherence, freq, mask, cores[i].first, cores[i].second, local_orie, local_coherence, local_freq);
 			fingerprints[i] = make_fingerprint_struct(next_id+i, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
 		}
-		save_to_file(num, fingerprints, "10kdb");
+		save_to_file(num, fingerprints, db_name);
 		cout << num << " cores saved\n";
 	} else {
 		cout << "Fingerprint isn't saved\n";
 	}
-
+	save_feature(orie, coherence, freq, img);
 	return 0;
 }
 
