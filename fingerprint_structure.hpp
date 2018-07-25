@@ -54,4 +54,6 @@ int get_last_id_from_file(std::string filename);
 
 int get_new_fingerprint_id(int last_id);
 
+int read_translated_structure(std::string filename, int* &ids, unsigned char* &dlocal_orientations, unsigned char* &local_coherences, unsigned char* &local_frequencies, unsigned char* &global_orientations, unsigned char* &global_frequencies);
+
 #endif

@@ -193,3 +193,50 @@ int get_new_fingerprint_id(int last_id) {
         return last_id+6-(last_id%5);
     }
 }
+
+int read_translated_structure(std::string filename, int* &ids, unsigned char* &dlocal_orientations, unsigned char* &local_coherences, unsigned char* &local_frequencies, unsigned char* &global_orientations, unsigned char* &global_frequencies) {
+    FILE *f;
+    char fname[filename.length()+1];
+    strcpy(fname, filename.c_str());
+    f = fopen(fname, "rb+");
+
+    if (f == NULL) {
+        fprintf(stderr, "\nError opening file %s\n", fname);
+        exit(1);
+    } else {
+        printf("Successful opening %sa\n", fname);
+    }
+
+    int count = 0;
+    
+    // Read count
+    fread(&count, sizeof(int), 1, f);
+    // std::cout << "Count : " << count << std::endl;
+
+    // Read IDs
+    ids = new int[count];
+    fread(ids, sizeof(int), count, f);
+
+    // Read Local Orientations
+    dlocal_orientations = new unsigned char[count*36];
+    fread(dlocal_orientations, sizeof(unsigned char), count*36, f);
+
+    // Read Local Coherences
+    local_coherences = new unsigned char[count*36];
+    fread(local_coherences, sizeof(unsigned char), count*36, f);
+
+    // Read Local Frequencies
+    local_frequencies = new unsigned char[count*36];
+    fread(local_frequencies, sizeof(unsigned char), count*36, f);
+
+    // Read Global Orientations
+    global_orientations = new unsigned char[count];
+    fread(global_orientations, sizeof(unsigned char), count, f);
+
+    // Read Global Frequencies
+    global_frequencies = new unsigned char[count];
+    fread(global_frequencies, sizeof(unsigned char), count, f);
+    
+    fclose(f);
+    return count;
+}
