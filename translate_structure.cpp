@@ -24,7 +24,14 @@ int main(int argc, char** argv) {
     int count = read_from_file(fp, filename);
     cout << count << endl;
 
+    // Write count
     fwrite(&count, sizeof(int), 1, f);
+
+    // Write IDs
+    for (int i=0 ; i<count ; i++) {
+        cout << fp[i].id << endl;
+        fwrite(&fp[i].id, sizeof(int), 1, f);
+    }
 
     // Write local orientation
     for (int i=0 ; i<count ; i++) {
