@@ -58,7 +58,7 @@ __device__ float dbyte_to_orientation(unsigned char c) {
     return result;
 }
 
-__global__ void calculate_s1_preparation(fingerprint* db, fingerprint* fp, float* g_s, float* g_cos, float* g_sin) {
+__global__ void calculate_s1_preparation(fingerprint* db, fingerprint* fp, float* g_s, float* g_cos, float* g_sin, int count) {
     int j = blockIdx.x;
     int i = threadIdx.x;
 
@@ -69,48 +69,11 @@ __global__ void calculate_s1_preparation(fingerprint* db, fingerprint* fp, float
     float tcos = s*cos(d);
     float tsin = s*sin(d);
 
-    int save_idx = j+i*36;
+    int save_idx = j+i*count;
 
-    if (g_s[save_idx] != 0) {
-        printf("S NOT ZERO %d\n", save_idx);
-    }
     g_s[save_idx] = s;
-    if (g_s[save_idx] != s) {
-        printf("S NOT SAME %d %f %f\n", save_idx, s, g_s[save_idx]);
-    }
-
-    if (g_cos[save_idx] != 0) {
-        printf("COS NOT ZERO %d\n", save_idx);
-    }
     g_cos[save_idx] = tcos;
-    if (g_cos[save_idx] != tcos) {
-        printf("COS NOT SAME %d %f %f\n", save_idx, tcos, g_cos[save_idx]);
-    }
-    if (g_s[save_idx] != s) {
-        printf("S NOT SAME %d %f %f\n", save_idx, s, g_s[save_idx]);
-    }
-
-    if (g_sin[save_idx] != 0) {
-        printf("SIN NOT ZERO %d\n", save_idx);
-    }
     g_sin[save_idx] = tsin;
-    if (g_sin[save_idx] != tsin) {
-        printf("SIN NOT SAME %d %f %f\n", save_idx, tsin, g_sin[save_idx]);
-    }
-    // if (g_s[save_idx] != s) {
-    //     printf("S NOT SAME %d %f %f\n", save_idx, s, g_s[save_idx]);
-    // }
-    // if (g_cos[save_idx] != tcos) {
-    //     printf("COS NOT SAME %d %f %f\n", save_idx, tcos, g_cos[save_idx]);
-    // }
-
-    // if (g_s[save_idx] != s) {
-    //     printf("NOT SAME %d %f %f\n", save_idx, s, g_s[save_idx]);
-    // }
-
-    if (save_idx < 35*36 && save_idx >= 34*36) {
-        printf("S1prep %d %f %f %f %f %f %f\n", save_idx, s, g_s[save_idx], tcos, g_cos[save_idx], tsin, g_sin[save_idx]);
-    }
 }
 
 __global__ void check_gs(float* g_s) {
@@ -120,18 +83,18 @@ __global__ void check_gs(float* g_s) {
 }
 
 __global__ void calculate_s1(float* g_s, float* g_cos, float* g_sin, float* result, int count) {
-    if (blockIdx.x == 34 && threadIdx.x<36) {
-        printf("S1Check %d %f\n", threadIdx.x, g_s[threadIdx.x]);
-    }
+    // if (blockIdx.x == 34 && threadIdx.x<36) {
+    //     printf("S1Check %d %f\n", threadIdx.x, g_s[threadIdx.x]);
+    // }
     int j = blockIdx.x*blockDim.x + threadIdx.x;
     if (j >= count) return;
     int local_start = j;
     float ss = 0.0f, scos = 0.0f, ssin = 0.0f;
     for (int i=0 ; i<36 ; i++) {
         // if (j == 0) printf("S1 %d %d %f %f %f\n", i, local_start+i*36, g_s[local_start+i*36], g_cos[local_start+i*36], g_sin[local_start+i*36]);
-        ss += g_s[local_start+i*36];
-        scos += g_cos[local_start+i*36];
-        ssin += g_sin[local_start+i*36];
+        ss += g_s[local_start+i*count];
+        scos += g_cos[local_start+i*count];
+        ssin += g_sin[local_start+i*count];
     }
     
     result[j] = sqrt(pow(scos,2)+pow(ssin,2))/ss;
@@ -241,15 +204,12 @@ int main(int argc, char** argv) {
     //Additional Memory for S1
     float *d_s, *d_cos, *d_sin;
     cudaMalloc((void **)&d_s, count_db*36*sizeof(float));
-    cudaMemset(d_s, 0, count_db*36*sizeof(float));
     cudaMalloc((void **)&d_cos, count_db*36*sizeof(float));
-    cudaMemset(d_cos, 0, count_db*36*sizeof(float));
     cudaMalloc((void **)&d_sin, count_db*36*sizeof(float));
-    cudaMemset(d_sin, 0, count_db*36*sizeof(float));
 
     // S1
-    calculate_s1_preparation<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_s, d_cos, d_sin);
-    check_gs<<<1,1>>>(d_s);
+    calculate_s1_preparation<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_s, d_cos, d_sin, count_db);
+    // check_gs<<<1,1>>>(d_s);
     calculate_s1<<<(count_db/256)+1, 256>>>(d_s, d_cos, d_sin, d_s1_result, count_db);
     get_best_core_s1<<<count_db, 1>>>(d_db, d_s1_result, d_mapping);
     gpuErrchk( cudaPeekAtLastError() );
@@ -294,10 +254,10 @@ int main(int argc, char** argv) {
     cudaMemcpy(&result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(&ids[0], d_ids, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
     
-    for (int i=count_db_fingerprint-1 ; i>=0 ; i--) {
+    /*for (int i=count_db_fingerprint-1 ; i>=0 ; i--) {
         std::cout << "ID " << ids[i] << "-"<< ids[i]/5 <<"\t: " << result[i];
         std::cout << std::endl;
-    }
+    }*/
     auto timer_end = std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = timer_end - timer_start;
     std::chrono::duration<double> sort_time = sort_end - sort_start;
