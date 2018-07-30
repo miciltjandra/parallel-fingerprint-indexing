@@ -84,9 +84,9 @@ __global__ void calculate_s1_preparation(fingerprint* db, fingerprint* fp, float
     }
 }
 
-__global__ void calculate_s1(float* s_sum, float* cos_sum, float* sin_sum, float* result) {
+__global__ void calculate_s1(float* s_sum, float* cos_sum, float* sin_sum, float* result, int count) {
     int j = blockIdx.x*blockDim.x + threadIdx.x;
-    result[j] = sqrt(pow(cos_sum[j],2)+pow(sin_sum[j],2))/s_sum[j];
+    if (j<count) result[j] = sqrt(pow(cos_sum[j],2)+pow(sin_sum[j],2))/s_sum[j];
 }
 
 __global__ void get_best_core_s1(fingerprint* db, float* result, int* mapping) {
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
 
     // S1
     calculate_s1_preparation<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_s_sum, d_cos_sum, d_sin_sum);
-    calculate_s1<<<count_db/256, 256>>>(d_s_sum, d_cos_sum, d_sin_sum, d_s1_result);
+    calculate_s1<<<(count_db/256)+1, 256>>>(d_s_sum, d_cos_sum, d_sin_sum, d_s1_result, count_db);
     get_best_core_s1<<<count_db, 1>>>(d_db, d_s1_result, d_mapping);
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
