@@ -1,4 +1,6 @@
 #include <opencv2/opencv.hpp>
+#include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <vector>
 #include "fingerprint_structure.hpp"
@@ -636,7 +638,7 @@ int main(int argc, char** argv) {
 	// orie.at<float>(24, 40) = 90.0f;
 	// orie.at<float>(40, 40) = 90.0f;
 
-	orie.at<float>(120, 152) += 90.0f; /* For fp.tif only to get the correct core */
+	// orie.at<float>(120, 152) += 90.0f; /* For fp.tif only to get the correct core */
 
 	// visualize_orientation(orie, coherence, image);
 
