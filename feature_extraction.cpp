@@ -342,7 +342,7 @@ Mat calculate_frequency(Mat image, Mat orie, Mat mask) {
 					int v = i + (d-BLOCKSIZE/2)*sin_o + (BLOCKSIZE-k)*cos_o;
 					// if (i == testx && j == testy) cout << "u : " << u << " v : " << v << " : " << image.at<float>(u,v) << endl;
 					// cout << u << " " << v << endl;
-					if (u < image.rows && v < image.cols) sigma += image.at<float>(u,v);
+					if (u >= 0 && v >=0 && u < image.rows && v < image.cols) sigma += image.at<float>(u,v);
 				}
 				// cout << "Check 1.4\n";
 				x_sign[k] = sigma/BLOCKSIZE;
