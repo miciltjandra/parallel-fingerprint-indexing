@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     int count = read_from_file(loads, filename);
     
     for (int i=0 ; i<count ; i++) {
-        //print_fingerprint_struct(loads[i]);
+        print_fingerprint_struct(loads[i]);
         if (loads[i].id != i+1) {
             cerr << "Array index " << i << " , fingerprint ID " << loads[i].id << endl;
             return 0;
