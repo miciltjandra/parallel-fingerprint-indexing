@@ -196,8 +196,8 @@ void correct_orientation(Mat &orie, Mat &cohe, Mat image) {
 				imshow("Block Orientation", block);
 				rectangle(image, Point(i-BLOCKSIZE/2, j-BLOCKSIZE/2), Point(i+BLOCKSIZE/2, j+BLOCKSIZE/2), CV_RGB(255,0,0), 1);
 				visualize_orientation(orie, cohe, image);
-				cout << "Current angle : " << angle << endl;
-				cout << "Input new angle : ";
+				cerr << "Current angle : " << angle << endl;
+				cerr << "Input new angle : ";
 				waitKey(1);
 				// float newangle;
 				// cin >> newangle;
@@ -676,22 +676,36 @@ int main(int argc, char** argv) {
 	// cin >> ans;
 	ans = 5;
 	// waitKey(0);
-	// save_feature(orie, coherence, freq, img);
+	save_feature(orie, coherence, freq, img);
 	if (ans) {
 		int num = min(min((int)cores.size(), ans), 5);
+		int j = 0;
 		struct fingerprint fingerprints[num];
-		for (int i=0 ; i<num ; i++) {
+		for (int i=0 ; i<cores.size() && j<num ; i++) {
 			vector<float> local_orie, local_coherence, local_freq;
 			get_local_values(orie, coherence, freq, mask, cores[i].first, cores[i].second, local_orie, local_coherence, local_freq);
-			fingerprints[i] = make_fingerprint_struct(next_id+i, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
+			// Check if zero
+			int notzero = 0;
+			for (int k=0 ; k<36 ; k++) {
+				if (local_orie[k] != 0) {
+					notzero += 1;
+					if (notzero >= 18) break;
+				}
+			}
+			if (notzero >= 18) {
+				fingerprints[j] = make_fingerprint_struct(next_id+j, local_orie, local_coherence, local_freq, avg_orie, avg_freq);
+				j++;
+			}
 		}
 		save_to_file(num, fingerprints, db_name);
-		cout << num << " cores saved\n";
+		cerr << num << " cores saved\n";
 	} else {
-		cout << "Fingerprint isn't saved\n";
+		cerr << "Fingerprint isn't saved\n";
 	}
-	save_feature(orie, coherence, freq, img);
+	// save_feature(orie, coherence, freq, img);
 	return 0;
 }
 
-// g++ -ggdb feature_extraction.cpp -o feature_extraction `pkg-config --cflags --libs opencv` fingerprint_structure.cpp
+// g++ -ggdb feature_extraction.cpp -o feature_extraction `pkg-config --cflags --libs opencv` fingerprint_structure.cpp -std=c++11
+
+// ./feature_extraction Validation/SecondImpression/xx.bmp validationfp_xx > Dumps/validationfp_xxdump
