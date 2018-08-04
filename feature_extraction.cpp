@@ -203,11 +203,32 @@ void correct_orientation(Mat &orie, Mat &cohe, Mat image) {
 				// cin >> newangle;
 				string buf;
 				getline(cin, buf);
-				if (buf != "") {
+				if (buf == "") {
+					done = true;
+				} else if (buf == "a") {
+					orie.at<float>(j,i) = 45.0f;
+				} else if (buf == "q") {
+					orie.at<float>(j,i) = 67.0f;
+				} else if (buf == "e") {
+					orie.at<float>(j,i) = 112.0f;
+				} else if (buf == "d") {
+					orie.at<float>(j,i) = 135.0f;
+				} else if (buf == "w") {
+					orie.at<float>(j,i) = 90.0f;
+				} else if (buf == "s") {
+					orie.at<float>(j,i) = 0.0f;
+				} else if (buf == "z") {
+					orie.at<float>(j,i) = 22.0f;
+				} else if (buf == "c") {
+					orie.at<float>(j,i) = 157.0f;
+				} else {
+					orie.at<float>(j,i) = atof(buf.c_str());
+				}
+				/*if (buf != "") {
 					orie.at<float>(j,i) = atof(buf.c_str());
 				} else {
 					done = true;
-				}
+				}*/
 			}
 		}
 	}
