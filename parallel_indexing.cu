@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <chrono>
@@ -77,7 +78,11 @@ __global__ void calculate_s1(fingerprint* db, fingerprint* fp, float* result) {
     atomicAdd(&scos, tcos);
     atomicAdd(&ssin, tsin);
     __syncthreads();
+    // if (j == 0) {
+    //     printf("S1prep %d %f %f %f\n", i, s, tcos, tsin);
+    // }
     if (i == 0) {
+        // printf("S1 %d %f %f %f\n", j, ss, scos, ssin);
         if (ss != 0) result[j] = sqrt(pow(scos,2)+pow(ssin,2))/ss;
         else result[j] = 0;
     }
@@ -185,8 +190,8 @@ int main(int argc, char** argv) {
     // S1
     calculate_s1<<<count_db,BLOCKSIZE>>>(d_db, d_fp, d_s1_result);
     get_best_core_s1<<<count_db, 1>>>(d_db, d_s1_result, d_mapping);
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
+    // gpuErrchk( cudaPeekAtLastError() );
+    // gpuErrchk( cudaDeviceSynchronize() );
 
     std::vector<int> mapping(count_db_fingerprint, 0);
     cudaMemcpy(&mapping[0], d_mapping, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
@@ -226,9 +231,10 @@ int main(int argc, char** argv) {
 
     cudaMemcpy(&result[0], d_result, count_db_fingerprint*sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(&ids[0], d_ids, count_db_fingerprint*sizeof(int), cudaMemcpyDeviceToHost);
-    
+    std::cout << std::fixed;
+    std::cout << std::setprecision(5);
     for (int i=count_db_fingerprint-1 ; i>=0 ; i--) {
-        std::cout << "ID " << ids[i] << "-"<< ids[i]/5 <<"\t: " << result[i];
+        std::cout << "ID " << ids[i] << "-"<< (ids[i]-1)/5+1 <<"\t: " << result[i];
         std::cout << std::endl;
     }
     auto timer_end = std::chrono::steady_clock::now();
@@ -250,4 +256,4 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// nvcc -o parallel_indexing parallel_indexing.cu fingerprint_structure.cpp -std=c++11
+// nvcc -o parallel_indexing parallel_indexing.cu fingerprint_structure.cpp -std=c++11 -lineinfo -ptxas-options=-v

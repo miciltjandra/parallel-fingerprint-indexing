@@ -14,6 +14,8 @@ const float w2 = 0.37f;
 const float w3 = 0.16f;
 const float w4 = 0.31f;
 
+vector<float> res_s1, res_s2, res_s3, res_s4, res_s, ress_s1;
+
 float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local_coherence_1, const vector<float> &local_orie_2, const vector<float> &local_coherence_2) {
     float sum1 = 0.0f, sum2 = 0.0f, sum3 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
@@ -26,6 +28,7 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
         sum2 += (s * sin(d));
         sum3 += s;
     }
+    if (sum3 == 0) return 0;
     float result = sqrt(pow(sum1,2)+pow(sum2,2))/sum3;
 
     return result;
@@ -34,10 +37,15 @@ float calculate_s1(const vector<float> &local_orie_1, const vector<float> &local
 float calculate_s2(const vector<float> &local_freq_1, const vector<float> &local_freq_2) {
     float sum1 = 0.0f, sum2 = 0.0f;
     for (int i=0 ; i<ARRAY_SIZE ; i++) {
+        // cout << i << " " << local_freq_1[i]+local_freq_2[i] << endl;
+        // cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << endl;
+        // cout << i << " " << abs(local_freq_1[i]-local_freq_2[i]) << " " << local_freq_1[i]+local_freq_2[i] << endl;
+        // cout << i << " " << local_freq_1[i] << " " << local_freq_2[i] << endl;
         sum1 += abs(local_freq_1[i]-local_freq_2[i]);
         sum2 += local_freq_1[i]+local_freq_2[i];
     }
     float result = 1 - (sum1/sum2);
+    // cout << sum1 << " " << sum2 << " " << result << endl;
     return result;
 }
 
@@ -47,7 +55,7 @@ float calculate_s3(const float &avg_freq_1, const float &avg_freq_2) {
 }
 
 float calculate_s4(const float &local_orie_1, const float &local_orie_2) {
-    float result = 1-(abs(local_orie_1-local_orie_2)/M_PI);
+    float result = 1-(abs(local_orie_1-local_orie_2)/180.0f);
     return result;
 }
 
@@ -65,12 +73,16 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
     float fp_avg_orie = get_fingerprint_average_orientation(fp);
     float fp_avg_freq = get_fingerprint_average_frequency(fp);
     int n = db.size();
+    int counter = 0;
     for (int i=0 ; i<n ; i++) {
         int current_id = db[i+1].id;
         vector<float> db_local_orie, db_local_cohe, stub;
         get_fingerprint_local_values(db[i], db_local_orie, db_local_cohe, stub);
 
         float s1 = calculate_s1(fp_local_orie, fp_local_cohe, db_local_orie, db_local_cohe);
+        res_s1.push_back(s1);
+        // cout << i << " : ID " << db[i].id << " ";
+        // cout << "S1 = " << s1 << endl;
         if (s1 > best_core_s1) {
             best_core_idx = i;
             best_core_s1 = s1;
@@ -78,30 +90,38 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 
         // Last core for a fingerprint
         if (i==n-1 || (db[i+1].id%5 == 1)) {
-            cout << "Best core " << best_core_idx << endl;
+            // cout << counter << " " << best_core_idx << endl;
             vector<float> db_local_freq;
             get_fingerprint_local_values(db[best_core_idx], stub, stub, db_local_freq);
 
             float db_avg_o = get_fingerprint_average_orientation(db[best_core_idx]);
             float db_avg_f = get_fingerprint_average_frequency(db[best_core_idx]);
 
+            ress_s1.push_back(best_core_s1);
+
+            // cout << "S2 " << counter << " ";
             float s2 = calculate_s2(fp_local_freq, db_local_freq);
+            res_s2.push_back(s2);
 
             float s3 = calculate_s3(fp_avg_freq, db_avg_f);
+            res_s3.push_back(s3);
 
             float s4 = calculate_s4(fp_avg_orie, db_avg_o);
+            res_s4.push_back(s4);
 
             float s = calculate_s(best_core_s1,s2,s3,s4);
+            res_s.push_back(s);
+            
 
             results.push_back(make_pair(s, db[best_core_idx].id));
             best_core_idx = i+1;
             best_core_s1 = 0;
+            counter += 1;
         }
     }
 }
 
 int main(int argc, char** argv) {
-    cout << sizeof(struct fingerprint) << endl;
     if (argc < 3) {
         cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
         return 0;
@@ -117,7 +137,11 @@ int main(int argc, char** argv) {
     // Read the database
     vector<struct fingerprint> db;
     int count_db = read_from_file(db, db_filename);
-    cerr << "Fingerprint database count : " << count_db << endl;
+    cerr << "Fingerprint core database count : " << count_db << endl;
+
+    cerr << "Last fingerprint ID : " << db[count_db-1].id << endl;
+    int count_db_fingerprint = (db[count_db-1].id-1)/5+1;
+    cerr << "Fingerprint database count : " << count_db_fingerprint << endl;
 
     // Start timer
     auto timer_start = chrono::steady_clock::now();
@@ -165,17 +189,21 @@ int main(int argc, char** argv) {
    
     // This is code for checking that fingerprint may have more than 1 core
     // Core used is the one with best S1 value
+    // cout << "BEST CORE\n";
     get_top_fingerprints(fp[0], db, best_matches);
+    auto sort_start = std::chrono::steady_clock::now();
     sort(best_matches.rbegin(), best_matches.rend());
-    cout << "\nBest match\n";
-    for (int i=0 ; i<best_matches.size() ; i++) {
+    auto sort_end = chrono::steady_clock::now();
+    // cout << "\nBest match\n";
+    /*for (int i=0 ; i<best_matches.size() ; i++) {
         cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
         cout << endl;
-    }
+    }*/
     auto timer_end = chrono::steady_clock::now();
     chrono::duration<double> diff = timer_end - timer_start;
-    cout << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
-    
+    std::chrono::duration<double> sort_time = sort_end - sort_start;
+    cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
+    std::cerr << "Time for sorting " << sort_time.count() << std::endl;
     return 0;
 }
 

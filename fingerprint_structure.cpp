@@ -149,7 +149,7 @@ int read_from_file(std::vector<struct fingerprint> &fps, std::string filename) {
         fprintf(stderr, "\nError opening file %s\n", fname);
         return 0;
     } else {
-        printf("Successful opening %sa\n", fname);
+        printf("Successful opening %s\n", fname);
     }
 
     int count = 0;

@@ -255,4 +255,4 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// nvcc -o parallel_indexing_stream parallel_indexing_stream.cu fingerprint_structure.cpp -std=c++11 -lineinfo
+// nvcc -o parallel_indexing_stream parallel_indexing_stream.cu fingerprint_structure.cpp -std=c++11 -lineinfo --default-stream per-thread

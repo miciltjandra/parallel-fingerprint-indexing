@@ -3,6 +3,13 @@
         "ostream": "cpp",
         "functional": "cpp",
         "array": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "chrono": "cpp",
+        "*.tcc": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp"
     }
 }

@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
     cudaMalloc((void **)&d_s4_result, count_db*sizeof(float));
     cudaMalloc((void **)&d_result, count_db_fingerprint*sizeof(float));
 
-    printf("Malloc done\n");
+    // printf("Malloc done\n");
 
     //Mapping for fingerprint to fingerprint core idx
     int *d_mapping;
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
 
     cudaMemcpy(d_fp, &fp[0], sizeof(fingerprint), cudaMemcpyHostToDevice);
 
-    printf("Memcpy FP done\n");
+    // printf("Memcpy FP done\n");
 
     cudaMemcpy(d_core_ids, core_ids, count_db*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_local_orientations, local_orientations, count_db*36*sizeof(unsigned char), cudaMemcpyHostToDevice);
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
     cudaMemcpy(d_global_orientations, global_orientations, count_db*sizeof(unsigned char), cudaMemcpyHostToDevice);
     cudaMemcpy(d_global_frequencies, global_frequencies, count_db*sizeof(unsigned char), cudaMemcpyHostToDevice);
 
-    printf("Memcpy done\n");
+    // printf("Memcpy done\n");
 
     //Additional Memory for S1
     float *d_s_sum, *d_cos_sum, *d_sin_sum;
@@ -259,7 +259,7 @@ int main(int argc, char** argv) {
     cudaMalloc((void **)&d_s_addition, count_db*sizeof(float));
     cudaMalloc((void **)&d_s_absdiff, count_db*sizeof(float));
 
-    printf("Malloc again done\n");
+    // printf("Malloc again done\n");
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -272,13 +272,13 @@ int main(int argc, char** argv) {
     cudaStreamCreate(&streams[3]);
 
     // S1
-    std::cerr << "Num of block : " << ((count_db*36)/256)+1 << std::endl;
+    // std::cerr << "Num of block : " << ((count_db*36)/256)+1 << std::endl;
     calculate_s1_preparation<<<((count_db*36)/256)+1, 256, 32, streams[0]>>>(d_fp, d_local_orientations, d_local_coherences, d_s_sum, d_cos_sum, d_sin_sum, count_db);
-    std::cerr << "s1 prep done\n";
+    // std::cerr << "s1 prep done\n";
     calculate_s1<<<(count_db/256)+1, 256, 4, streams[0]>>>(d_s_sum, d_cos_sum, d_sin_sum, d_s1_result, count_db);
-    std::cerr << "s1 done\n";
+    // std::cerr << "s1 done\n";
     get_best_core_s1<<<(count_db/256)+1, 256, 32, streams[0]>>>(d_core_ids, d_s1_result, d_mapping, count_db);
-    std::cerr << "best core done\n";
+    // std::cerr << "best core done\n";
 
     // std::vector<float> s1_result;
     // s1_result.resize(count_db, 0);

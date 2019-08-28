@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -122,13 +123,16 @@ void get_top_fingerprints(const struct fingerprint &fp, const vector<struct fing
 }
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db\n";
+    if (argc < 5) {
+        cerr << "Usage : ./indexing fingerprint-to-be-searched fingerprint-db id-to-search core-number\n";
         return 0;
     }
     string fp_filename = argv[1];
     string db_filename = argv[2];
-    cerr << "FP " << fp_filename << " DB " << db_filename << endl;
+    int id_to_search = stoi(argv[3]);
+    int core_number = stoi(argv[4]);
+    // cerr << "FP " << fp_filename << " DB " << db_filename << endl;
+    // cerr << "Using FP core " << core_number << endl;
 
     // Read the fingerprint to be searched
     vector<struct fingerprint> fp;
@@ -190,13 +194,20 @@ int main(int argc, char** argv) {
     // This is code for checking that fingerprint may have more than 1 core
     // Core used is the one with best S1 value
     // cout << "BEST CORE\n";
-    get_top_fingerprints(fp[0], db, best_matches);
+    get_top_fingerprints(fp[core_number], db, best_matches);
     auto sort_start = std::chrono::steady_clock::now();
     sort(best_matches.rbegin(), best_matches.rend());
     auto sort_end = chrono::steady_clock::now();
     // cout << "\nBest match\n";
+    int found_at = 0;
+    std::cout << std::fixed;
+    std::cout << std::setprecision(5);
     for (int i=0 ; i<best_matches.size() ; i++) {
-        cout << "ID " << best_matches[i].second << "-"<< best_matches[i].second/5 <<"\t: " << best_matches[i].first;
+        int fp_id = (best_matches[i].second-1)/5+1;
+        if (fp_id == id_to_search) {
+            found_at = i+1;
+        }
+        cout << "ID " << best_matches[i].second << "-"<< fp_id <<"\t: " << best_matches[i].first;
         cout << endl;
     }
     auto timer_end = chrono::steady_clock::now();
@@ -204,6 +215,7 @@ int main(int argc, char** argv) {
     std::chrono::duration<double> sort_time = sort_end - sort_start;
     cerr << "Time to get indexing result for " << count_db << " fingerprints in DB : " << diff.count()  << endl;
     std::cerr << "Time for sorting " << sort_time.count() << std::endl;
+    std::cerr << "Fingerprint found at rank " << found_at << endl;
 
     for (int i=0 ; i<count_db ; i++) {
         if (db[i].id == 48808) {
@@ -219,10 +231,10 @@ int main(int argc, char** argv) {
     }
 /*
     // DEBUG
-    // cout << "\nS1\n";
-    // for (int i=0 ; i<res_s1.size() ; i++) {
-    //     cout << res_s1[i] << endl;
-    // }
+    cout << "\nS1\n";
+    for (int i=0 ; i<res_s1.size() ; i++) {
+        cout << res_s1[i] << endl;
+    }
 
     cout << "\nS1\n";
     for (int i=0 ; i<ress_s1.size() ; i++) {
@@ -247,8 +259,8 @@ int main(int argc, char** argv) {
     cout << "\nS\n";
     for (int i=0 ; i<res_s.size() ; i++) {
         cout << res_s[i] << endl;
-    }
-*/  
+    }*/
+  
     return 0;
 }
 

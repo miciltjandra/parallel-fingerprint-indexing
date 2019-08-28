@@ -16,10 +16,10 @@ int main(int argc, char** argv) {
     
     for (int i=0 ; i<count ; i++) {
         print_fingerprint_struct(loads[i]);
-        if (loads[i].id != i+1) {
-            cerr << "Array index " << i << " , fingerprint ID " << loads[i].id << endl;
-            return 0;
-        }
+        // if (loads[i].id != i+1) {
+        //     cerr << "Array index " << i << " , fingerprint ID " << loads[i].id << endl;
+        //     return 0;
+        // }
     }
 
     printf("LOADS size %d\n", (int)loads.size());
